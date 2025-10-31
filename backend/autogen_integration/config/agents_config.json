@@ -1,0 +1,60 @@
+{
+  "execution_mode": "semi-automated",
+  "agents": {
+    "user_proxy": {
+      "human_input_mode": "NEVER",
+      "max_consecutive_auto_reply": 10,
+      "code_execution": {
+        "enabled": false,
+        "use_docker": false
+      }
+    },
+    "coordinator": {
+      "max_retries": 3,
+      "timeout": 300
+    },
+    "system_agent": {
+      "timeout_per_task": 120,
+      "parallel_execution": false
+    },
+    "security_agent": {
+      "timeout_per_task": 180,
+      "require_admin_confirmation": true
+    }
+  },
+  "task_routing": {
+    "thermal": "system_agent",
+    "disk": "system_agent",
+    "memory": "system_agent",
+    "power": "system_agent",
+    "event_log": "security_agent",
+    "system_files": "security_agent",
+    "network": "system_agent",
+    "gpu": "system_agent",
+    "general": "coordinator"
+  },
+  "execution_modes": {
+    "fully_automated": {
+      "description": "Execute all tasks without human intervention",
+      "human_input_mode": "NEVER",
+      "auto_approve_all": true
+    },
+    "semi_automated": {
+      "description": "Pause for approval on admin tasks",
+      "human_input_mode": "NEVER",
+      "auto_approve_safe": true,
+      "manual_approve_admin": true
+    },
+    "interactive": {
+      "description": "User approves each task",
+      "human_input_mode": "ALWAYS",
+      "auto_approve_all": false
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/autogen_execution.log",
+    "console": true,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  }
+}
