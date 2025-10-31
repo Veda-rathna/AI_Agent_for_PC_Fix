@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './DiagnosticChat.css';
 import ConversationHistory from './ConversationHistory';
 import MCPTaskDisplay from './MCPTaskDisplay';
 
 const DiagnosticChat = () => {
+  const navigate = useNavigate();
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,7 +155,9 @@ const DiagnosticChat = () => {
           finishReason: data.finish_reason,
           usage: data.usage,
           timestamp: new Date().toISOString(),
-          mcpExecution: data.mcp_execution // Add MCP execution results
+          mcpExecution: data.mcp_execution, // Add MCP execution results
+          isHardwareIssue: data.is_hardware_issue, // Hardware issue flag
+          hardwareIssueDetails: data.hardware_issue_details // Hardware navigation options
         };
         
         setMessages(prev => [...prev, aiMessage]);
@@ -324,6 +328,49 @@ const DiagnosticChat = () => {
               <div className="message-content">
                 {msg.type === 'assistant' ? formatMessage(msg.content) : msg.content}
               </div>
+              
+              {/* Display Hardware Issue Navigation Buttons */}
+              {msg.isHardwareIssue && msg.hardwareIssueDetails && (
+                <div className="hardware-issue-alert">
+                  <div className="hardware-alert-header">
+                    <span className="hardware-icon">⚠️</span>
+                    <h4>Hardware Issue Detected</h4>
+                  </div>
+                  <p className="hardware-recommendation">
+                    {msg.hardwareIssueDetails.recommendation}
+                  </p>
+                  <div className="hardware-navigation-buttons">
+                    <button
+                      className="hardware-nav-btn service-center-btn"
+                      onClick={() => navigate('/service-centers')}
+                    >
+                      <span className="btn-icon">📍</span>
+                      <div className="btn-content">
+                        <span className="btn-label">
+                          {msg.hardwareIssueDetails.navigation_options.service_center.label}
+                        </span>
+                        <span className="btn-description">
+                          {msg.hardwareIssueDetails.navigation_options.service_center.description}
+                        </span>
+                      </div>
+                    </button>
+                    <button
+                      className="hardware-nav-btn hardware-protection-btn"
+                      onClick={() => navigate('/hardware-protection')}
+                    >
+                      <span className="btn-icon">🛡️</span>
+                      <div className="btn-content">
+                        <span className="btn-label">
+                          {msg.hardwareIssueDetails.navigation_options.hardware_protection.label}
+                        </span>
+                        <span className="btn-description">
+                          {msg.hardwareIssueDetails.navigation_options.hardware_protection.description}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* Display MCP Task Execution Results */}
               {msg.mcpExecution && msg.mcpExecution.executed && (

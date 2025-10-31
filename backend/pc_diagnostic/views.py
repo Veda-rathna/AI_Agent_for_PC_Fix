@@ -30,7 +30,7 @@ hardware_hash_protection = HardwareHashProtection()
 
 # Local LLM API Configuration
 # Using Cloudflare tunnel for http://localhost:8888
-LLM_API_BASE = "http://127.0.0.1:1234"
+LLM_API_BASE = "https://3ccc9499bbff.ngrok-free.app"
 # Model ID - llama.cpp server auto-detects the loaded model, so we can use a simple identifier
 LLM_MODEL_ID = "reasoning-llama-3.1-cot-re1-nmt-v2-orpo-i1"
 
@@ -246,107 +246,90 @@ Please provide a comprehensive diagnosis and solution based on this real-time sy
         messages = [
             {
                 "role": "system",
-                "content": """
-You are an AI PC Diagnostic Assistant designed to troubleshoot and resolve computer hardware and software issues.
+                "content": """You are an AI PC Diagnostic Expert. Analyze real-time telemetry data to distinguish hardware from software issues.
 
-Your role involves two layers of response:
-1. Human-level conversation (visible to user)
-2. Machine Control Protocol (MCP) task generation (hidden JSON block)
+CORE RULES:
+1. Base diagnosis ONLY on provided telemetry data - show specific metrics
+2. Classify issue as HARDWARE or SOFTWARE
+3. Generate MCP tasks ONLY for SOFTWARE issues that can be fixed programmatically
+4. For HARDWARE issues: skip MCP tasks, recommend service center
 
----
+HARDWARE INDICATORS:
+- Abnormal temps (CPU >85°C, GPU >80°C)
+- SMART errors, bad sectors
+- Component not detected (PCI, display)
+- Issues persist in Safe Mode/BIOS
+- Physical damage symptoms
 
-1️⃣ **Visible User Conversation**
-- Respond naturally in an easy-to-understand tone.
-- Ask clarifying questions if needed.
-- Provide step-by-step manual or visual instructions that the user can perform themselves.
-- These are physical or user-level checks such as:
-  - "Check if the power cable is properly connected."
-  - "Try booting in Safe Mode."
-  - "Inspect your display for any visible damage."
-- Never mention any JSON or internal system processing to the user.
+SOFTWARE INDICATORS:
+- Normal hardware metrics but instability
+- Event Viewer errors (drivers, apps)
+- Started after update/installation
+- Resolves in Safe Mode
+- High CPU/RAM by specific process
 
----
+RESPONSE FORMAT:
 
-2️⃣ **Hidden MCP Task Generation**
-After your user-facing explanation, you must append a JSON block enclosed between <MCP_TASKS> and </MCP_TASKS>.
+**Diagnosis Summary:**
+- Issue Type: [HARDWARE / SOFTWARE]
+- Root Cause: [specific component/service]
+- Key Telemetry: [show only issue-relevant metrics with values]
+- Confidence: [High/Medium/Low]
 
-Rules for MCP tasks:
-- Include only tasks that the system or diagnostic agent can perform or verify programmatically.
-- These are system-level, telemetry, or command-based actions.
-- Do not include tasks that require physical inspection or human intervention.
-- Generate as many relevant and required tasks as possible to ensure a complete diagnostic scope.
-  - Do not limit yourself to just 3–4 tasks.
-  - Cover all key checks that can be done by the computer for that issue.
+**Analysis:**
+Explain correlation between symptoms and telemetry data.
 
-Examples of valid MCP tasks:
-- "Check GPU driver version and integrity"
-- "Scan Windows Event Log for GPU or display errors"
-- "Verify if monitor is detected through DDC/CI"
-- "Test PCI device enumeration for GPU"
-- "Check power supply voltage sensor readings"
-- "Analyze temperature logs for thermal shutdown patterns"
+**If SOFTWARE:**
+✅ Automated fixes available
+[Manual steps user can try]
 
-Examples of invalid MCP tasks (must not appear):
-- "Check if the monitor cable is plugged in"
-- "Inspect screen for cracks"
-- "Clean the RAM sticks manually"
-
----
-
-3️⃣ **Response Format**
-Write the natural user response first.
-Then include the structured JSON block exactly like this:
+I'll run automated diagnostics to:
+- [What will be checked/fixed]
 
 <MCP_TASKS>
 {
+  "issue_type": "software",
   "tasks": [
-    "Comprehensive system-level diagnostic task 1",
-    "Comprehensive system-level diagnostic task 2",
-    "Comprehensive system-level diagnostic task 3"
+    "Specific system-level diagnostic 1",
+    "Specific system-level diagnostic 2"
   ],
-  "summary": "Brief description of what the MCP should analyze or verify."
+  "summary": "Automated software diagnostics"
 }
 </MCP_TASKS>
 
----
-
-✅ **Example Output**
-
-User: "My screen isn't turning on."
-
-AI Output:
-Let's narrow this down.
-Please check whether your monitor cable is properly plugged into both ends.
-Press the Caps Lock key — if the indicator light toggles, your PC is on but the display may not be initializing.
-Try connecting your monitor to a different port or system to confirm the display is working.
-If it still doesn't show anything, I'll now check your system drivers and logs for possible GPU or display-related faults.
+**If HARDWARE:**
+⚠️ HARDWARE FAILURE DETECTED
+- Component: [specific part]
+- Why Hardware: [telemetry evidence]
+- User Actions:
+  1. [Physical check if safe]
+  2. [Testing steps]
+  3. Service center required
 
 <MCP_TASKS>
 {
-  "tasks": [
-    "Check GPU driver version and integrity",
-    "Verify GPU hardware presence through PCI bus enumeration",
-    "Check Windows Event Logs for display driver initialization failures",
-    "Scan system for recent BSOD or display-related kernel events",
-    "Validate DirectX diagnostic logs for rendering initialization errors",
-    "Check if connected monitor is detected through DDC/CI handshake",
-    "Inspect power delivery telemetry for GPU and display subsystems"
-  ],
-  "summary": "Perform deep analysis of GPU, display drivers, and event logs to detect potential display initialization failures."
+  "issue_type": "hardware",
+  "tasks": [],
+  "summary": "Hardware issue - automated tasks skipped",
+  "hardware_component": "[component]",
+  "service_required": true
 }
 </MCP_TASKS>
 
----
+EXAMPLES:
 
-IMPORTANT: You have access to real-time system telemetry data. Use this data to:
-1. Identify the root cause of the issue based on the telemetry data
-2. Provide specific diagnostic insights correlating symptoms with actual system metrics
-3. Offer step-by-step solutions prioritized by likelihood of success
-4. Recommend preventive measures to avoid future occurrences
-5. Highlight any critical system health issues discovered in the telemetry data
+Ex1: "Computer slow" | Telemetry: Disk 100% by Windows Update, CPU 45°C, RAM 92%
+→ SOFTWARE (process bottleneck)
+→ Generate MCP tasks: Clear update cache, optimize services
+→ Show: Disk usage metrics only
 
-Format your response with both the user-friendly conversation AND the MCP tasks block as shown above.
-"""
+Ex2: "Screen has lines" | Telemetry: GPU 42°C, no driver errors, artifacts in BIOS
+→ HARDWARE (GPU/LCD failure)
+→ NO MCP tasks
+→ Recommend: External monitor test, service center
+→ Show: GPU/display metrics only
+
+Focus on issue-specific telemetry only. Be decisive. Provide actionable next steps."""
             },
             {
                 "role": "user",
@@ -409,6 +392,28 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
                 
+                # Detect if this is a hardware issue by parsing the MCP_TASKS block
+                is_hardware_issue = False
+                hardware_component = None
+                
+                try:
+                    # Extract MCP_TASKS JSON from the response
+                    if '<MCP_TASKS>' in prediction and '</MCP_TASKS>' in prediction:
+                        start_idx = prediction.find('<MCP_TASKS>') + len('<MCP_TASKS>')
+                        end_idx = prediction.find('</MCP_TASKS>')
+                        mcp_json_str = prediction[start_idx:end_idx].strip()
+                        
+                        # Parse the JSON
+                        mcp_data = json.loads(mcp_json_str)
+                        
+                        # Check if it's a hardware issue
+                        if mcp_data.get('issue_type') == 'hardware':
+                            is_hardware_issue = True
+                            hardware_component = mcp_data.get('hardware_component', 'Unknown Component')
+                            print(f"🔧 Hardware issue detected: {hardware_component}")
+                except Exception as parse_error:
+                    print(f"Warning: Could not parse MCP tasks for hardware detection: {str(parse_error)}")
+                
                 # Build response data
                 response_data = {
                     'success': True,
@@ -417,6 +422,7 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                     'model': model_used,
                     'finish_reason': finish_reason,
                     'session_id': session_id,
+                    'is_hardware_issue': is_hardware_issue,
                     'telemetry_collected': True,
                     'telemetry_summary': {
                         'timestamp': telemetry_data.get('timestamp'),
@@ -437,6 +443,29 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                         'system_fingerprint': result.get('system_fingerprint', '')
                     }
                 }
+                
+                # Add hardware-specific navigation options if it's a hardware issue
+                if is_hardware_issue:
+                    response_data['hardware_issue_details'] = {
+                        'component': hardware_component,
+                        'requires_service': True,
+                        'navigation_options': {
+                            'service_center': {
+                                'label': 'Find Nearby Service Centers',
+                                'description': 'Locate authorized repair centers near your location',
+                                'action': 'navigate_to_service_centers',
+                                'icon': 'location'
+                            },
+                            'hardware_protection': {
+                                'label': 'Hardware Protection',
+                                'description': 'Generate hardware fingerprint to verify component authenticity',
+                                'action': 'navigate_to_hardware_protection',
+                                'icon': 'shield'
+                            }
+                        },
+                        'recommendation': 'This issue requires professional hardware service. Use the buttons below to find service centers or protect your hardware identity.'
+                    }
+                    print(f"✅ Added hardware navigation options to response")
                 
                 # Execute MCP tasks if requested
                 if execute_mcp:
@@ -531,6 +560,23 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
             finish_reason = "offline_mode"
             usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
             
+            # Detect potential hardware issues in offline mode based on keywords and telemetry
+            is_hardware_issue = False
+            hardware_keywords = ['screen', 'display', 'monitor', 'lines', 'artifacts', 'flickering', 
+                               'dead pixel', 'won\'t turn on', 'no power', 'beeping', 'clicking',
+                               'overheat', 'burning smell', 'physical damage', 'broken', 'cracked']
+            
+            # Check if user description contains hardware-related keywords
+            input_lower = input_text.lower()
+            for keyword in hardware_keywords:
+                if keyword in input_lower:
+                    is_hardware_issue = True
+                    break
+            
+            # Also check telemetry for hardware issues
+            if telemetry_data.get('cpu', {}).get('temperature', 0) > 85:
+                is_hardware_issue = True
+            
             response_data = {
                 'success': True,
                 'prediction': prediction,
@@ -538,6 +584,7 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                 'model': model_used,
                 'finish_reason': finish_reason,
                 'session_id': session_id,
+                'is_hardware_issue': is_hardware_issue,
                 'telemetry_collected': True,
                 'telemetry_summary': {
                     'timestamp': telemetry_data.get('timestamp'),
@@ -554,6 +601,29 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                     'system_fingerprint': ''
                 }
             }
+            
+            # Add hardware navigation options if suspected hardware issue
+            if is_hardware_issue:
+                response_data['hardware_issue_details'] = {
+                    'component': 'Suspected Hardware Component',
+                    'requires_service': True,
+                    'navigation_options': {
+                        'service_center': {
+                            'label': 'Find Nearby Service Centers',
+                            'description': 'Locate authorized repair centers near your location',
+                            'action': 'navigate_to_service_centers',
+                            'icon': 'location'
+                        },
+                        'hardware_protection': {
+                            'label': 'Hardware Protection',
+                            'description': 'Generate hardware fingerprint to verify component authenticity',
+                            'action': 'navigate_to_hardware_protection',
+                            'icon': 'shield'
+                        }
+                    },
+                    'recommendation': 'This appears to be a hardware-related issue. Use the buttons below to find service centers or protect your hardware identity.'
+                }
+                print(f"✅ Hardware issue suspected in offline mode - added navigation options")
             
             # Generate reports if requested
             if generate_report:
