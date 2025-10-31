@@ -34,6 +34,13 @@ const Layout = ({ children }) => {
           </NavLink>
           
           <NavLink 
+            to="/service-centers" 
+            className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
+          >
+            <span className="nav-text">Service Centers</span>
+          </NavLink>
+          
+          <NavLink 
             to="/about" 
             className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
           >

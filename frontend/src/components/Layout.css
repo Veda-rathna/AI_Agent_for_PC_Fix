@@ -5,6 +5,7 @@
   min-height: 100vh;
   background: #000;
   overflow: hidden;
+  padding-top: 80px; /* Add padding to account for fixed nav */
 }
 
 /* Top Navigation Bar */
@@ -15,7 +16,11 @@
   padding: 15px 30px;
   background: #000;
   border-bottom: 1px solid #222;
-  position: relative;
+  position: fixed; /* Make nav bar fixed */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000; /* Higher z-index to stay on top */
 }
 
 .nav-brand {
@@ -77,16 +82,21 @@
   flex: 1;
   background: #000;
   overflow: auto;
-  height: calc(100vh - 70px);
+  height: calc(100vh - 80px);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .layout {
+    padding-top: 140px; /* Adjust for taller mobile nav */
+  }
+  
   .top-nav {
     flex-direction: column;
     gap: 15px;
     padding: 15px 20px;
     justify-content: center;
+    position: fixed; /* Keep fixed on mobile */
   }
   
   .nav-brand {
@@ -110,7 +120,7 @@
   }
   
   .main-content {
-    height: calc(100vh - 130px);
+    height: calc(100vh - 140px);
   }
 }
 

@@ -41,4 +41,7 @@ urlpatterns = [
     path('api/conversations/<uuid:conversation_id>/delete/', conversation_views.delete_conversation, name='delete_conversation'),
     path('api/conversations/<uuid:conversation_id>/messages/', conversation_views.add_message, name='add_message'),
     path('api/conversations/save-bulk/', conversation_views.save_conversation_bulk, name='save_conversation_bulk'),
+    
+    # Service Centers endpoint
+    path('api/service-centers/nearby/', views.get_nearby_service_centers, name='get_nearby_service_centers'),
 ]

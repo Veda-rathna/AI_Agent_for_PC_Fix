@@ -11,6 +11,8 @@ import uuid
 import json
 import platform
 from datetime import datetime
+import csv
+import math
 
 # Import hardware monitoring modules
 from .hardware_monitor import HardwareMonitor
@@ -777,5 +779,138 @@ def download_hardware_hash(request, filename):
         return Response({
             'success': False,
             'error': f'Failed to download file: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculate distance between two points using Haversine formula
+    Returns distance in kilometers
+    """
+    # Convert to radians
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    
+    # Haversine formula
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    # Earth radius in kilometers
+    r = 6371
+    
+    return c * r
+
+
+@api_view(['POST'])
+def get_nearby_service_centers(request):
+    """
+    Get nearby service centers based on user location
+    
+    Request Body:
+        {
+            "latitude": 13.0827,
+            "longitude": 80.2707,
+            "radius_km": 30,  // Optional, defaults to 30km
+            "brand": "Dell"    // Optional, filter by brand
+        }
+    
+    Response:
+        {
+            "success": true,
+            "user_location": {"latitude": x, "longitude": y},
+            "total_centers": 5,
+            "service_centers": [...]
+        }
+    """
+    try:
+        # Get user location from request
+        user_lat = request.data.get('latitude')
+        user_lon = request.data.get('longitude')
+        radius_km = request.data.get('radius_km', 30)
+        brand_filter = request.data.get('brand')
+        
+        if user_lat is None or user_lon is None:
+            return Response({
+                'success': False,
+                'error': 'Latitude and longitude are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user_lat = float(user_lat)
+            user_lon = float(user_lon)
+            radius_km = float(radius_km)
+        except ValueError:
+            return Response({
+                'success': False,
+                'error': 'Invalid latitude, longitude, or radius values'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Read service centers from CSV
+        csv_path = os.path.join(settings.BASE_DIR.parent, 'service_centers.csv')
+        
+        if not os.path.exists(csv_path):
+            return Response({
+                'success': False,
+                'error': 'Service centers database not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        service_centers = []
+        
+        with open(csv_path, 'r', encoding='utf-8') as file:
+            csv_reader = csv.DictReader(file)
+            
+            for row in csv_reader:
+                # Skip if brand filter is applied and doesn't match
+                if brand_filter and row['Brand'].lower() != brand_filter.lower():
+                    continue
+                
+                # Skip if latitude or longitude is missing
+                if not row.get('Latitude') or not row.get('Longitude'):
+                    continue
+                
+                try:
+                    center_lat = float(row['Latitude'])
+                    center_lon = float(row['Longitude'])
+                    
+                    # Calculate distance
+                    distance = calculate_distance(user_lat, user_lon, center_lat, center_lon)
+                    
+                    # Include only centers within the specified radius
+                    if distance <= radius_km:
+                        service_centers.append({
+                            'brand': row['Brand'],
+                            'name': row['Name'],
+                            'phone': row['Phone'],
+                            'address': row['Address'],
+                            'city': row['City'],
+                            'latitude': center_lat,
+                            'longitude': center_lon,
+                            'distance_km': round(distance, 2)
+                        })
+                
+                except (ValueError, KeyError) as e:
+                    # Skip invalid rows
+                    continue
+        
+        # Sort by distance
+        service_centers.sort(key=lambda x: x['distance_km'])
+        
+        return Response({
+            'success': True,
+            'user_location': {
+                'latitude': user_lat,
+                'longitude': user_lon
+            },
+            'radius_km': radius_km,
+            'total_centers': len(service_centers),
+            'service_centers': service_centers,
+            'brands_available': list(set([center['brand'] for center in service_centers]))
+        })
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to fetch service centers: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
