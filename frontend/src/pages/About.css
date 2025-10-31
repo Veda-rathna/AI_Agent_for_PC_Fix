@@ -18,14 +18,14 @@
 }
 
 .about-hero h1 {
-  font-size: 32px;
+  font-size: 2rem; /* 32px - H1 */
   margin-bottom: 12px;
   color: #fff;
   font-weight: 700;
 }
 
 .about-subtitle {
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Small text */
   color: #aaa;
   margin: 0;
   line-height: 1.5;
@@ -52,19 +52,19 @@
 
 .about-section h2 {
   color: #fff;
-  font-size: 20px;
+  font-size: 1.25rem; /* 20px - H2 adjusted */
   margin-bottom: 12px;
   font-weight: 600;
 }
 
 .about-section p {
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small body text */
 }
 
 .about-section p {
   color: #aaa;
   line-height: 1.6;
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small body text */
   margin: 0;
 }
 
@@ -94,13 +94,13 @@
 
 .feature-bullet {
   color: #fff;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Standard UI */
   font-weight: bold;
   flex-shrink: 0;
 }
 
 .feature-item div {
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small caption */
 }
 
 .feature-item strong {
@@ -137,14 +137,14 @@
 
 .benefit-card h3 {
   color: #fff;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - H4 */
   margin-bottom: 6px;
   font-weight: 600;
 }
 
 .benefit-card p {
   color: #888;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small caption */
   margin: 0;
   line-height: 1.4;
 }
@@ -158,11 +158,11 @@
 }
 
 .cta-section h2 {
-  font-size: 24px;
+  font-size: 1.5rem; /* 24px - H2 */
 }
 
 .cta-section p {
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Standard UI */
   margin-bottom: 16px;
 }
 
@@ -176,7 +176,7 @@
   text-decoration: none;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Button text */
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
 }
@@ -187,7 +187,7 @@
 }
 
 .cta-button .arrow {
-  font-size: 16px;
+  font-size: 1rem; /* 16px - Icon */
   transition: transform 0.3s ease;
 }
 
@@ -206,11 +206,11 @@
 
 .about-footer p {
   margin: 4px 0;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small caption */
 }
 
 .version {
-  font-size: 11px;
+  font-size: 0.6875rem; /* 11px - Extra small */
   color: #555;
 }
 
@@ -238,11 +238,11 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .about-hero h1 {
-    font-size: 32px;
+    font-size: 2rem; /* 32px on tablet - keep same */
   }
   
   .about-subtitle {
-    font-size: 16px;
+    font-size: 1rem; /* 16px on tablet */
   }
   
   .about-section {
@@ -250,7 +250,7 @@
   }
   
   .about-section h2 {
-    font-size: 24px;
+    font-size: 1.5rem; /* 24px on tablet */
   }
   
   .benefits-grid {
@@ -258,11 +258,11 @@
   }
   
   .cta-section h2 {
-    font-size: 26px;
+    font-size: 1.625rem; /* 26px on tablet */
   }
   
   .cta-section p {
-    font-size: 16px;
+    font-size: 1rem; /* 16px on tablet */
   }
 }
 
@@ -276,23 +276,23 @@
   }
   
   .about-hero h1 {
-    font-size: 26px;
+    font-size: 1.625rem; /* 26px on small mobile */
   }
   
   .about-subtitle {
-    font-size: 14px;
+    font-size: 0.875rem; /* 14px on small mobile */
   }
   
   .section-icon {
-    font-size: 36px;
+    font-size: 2.25rem; /* 36px on small mobile */
   }
   
   .about-section h2 {
-    font-size: 20px;
+    font-size: 1.25rem; /* 20px on small mobile */
   }
   
   .cta-button {
     padding: 12px 24px;
-    font-size: 16px;
+    font-size: 1rem; /* 16px on small mobile */
   }
 }

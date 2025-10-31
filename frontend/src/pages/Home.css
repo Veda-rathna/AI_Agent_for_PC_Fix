@@ -31,7 +31,7 @@
   background: rgba(0, 255, 0, 0.1);
   border: 1px solid rgba(0, 255, 0, 0.3);
   border-radius: 20px;
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small badge text */
   font-weight: 500;
   color: #00ff00;
   margin-bottom: 24px;
@@ -57,7 +57,7 @@
 }
 
 .hero-title {
-  font-size: 56px;
+  font-size: 3rem; /* 48px - Hero title (H1 range: 32-48px) */
   font-weight: 800;
   line-height: 1.1;
   margin-bottom: 20px;
@@ -72,13 +72,13 @@
 }
 
 .subtitle-text {
-  font-size: 32px;
+  font-size: 2rem; /* 32px - H1 range */
   font-weight: 600;
   color: #aaa;
 }
 
 .hero-subtitle {
-  font-size: 18px;
+  font-size: 1.125rem; /* 18px - Body text (16-18px range) */
   color: #bbb;
   margin-bottom: 32px;
   line-height: 1.6;
@@ -97,7 +97,7 @@
   border-radius: 12px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - Button text (14-16px range) */
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -145,7 +145,7 @@
 }
 
 .btn-icon {
-  font-size: 18px;
+  font-size: 1.125rem; /* 18px - Icon size */
   transition: transform 0.3s ease;
 }
 
@@ -167,7 +167,7 @@
 }
 
 .stat-number {
-  font-size: 36px;
+  font-size: 2.25rem; /* 36px - Display number */
   font-weight: 700;
   color: #00ff00;
   margin-bottom: 4px;
@@ -175,7 +175,7 @@
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Caption text */
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -262,7 +262,7 @@
 }
 
 .core-text {
-  font-size: 48px;
+  font-size: 3rem; /* 48px - Large display */
   font-weight: 900;
   color: #000;
   z-index: 1;
@@ -310,7 +310,7 @@
 
 .indicator-label {
   display: block;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small caption */
   color: #aaa;
   margin-bottom: 8px;
   font-weight: 500;
@@ -345,7 +345,7 @@
 
 .section-title {
   text-align: center;
-  font-size: 42px;
+  font-size: 2.625rem; /* 42px - H1 range adjusted */
   font-weight: 700;
   margin-bottom: 48px;
   color: #fff;
@@ -406,7 +406,7 @@
 
 .issue-card h3 {
   color: #fff;
-  font-size: 18px;
+  font-size: 1.125rem; /* 18px - H3 */
   font-weight: 600;
   margin: 0;
 }
@@ -414,7 +414,7 @@
 .severity-badge {
   padding: 4px 12px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 0.6875rem; /* 11px - Extra small badge */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -445,12 +445,12 @@
 }
 
 .issue-count {
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small text */
   color: #888;
 }
 
 .issue-action {
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Button text */
   color: #00ff00;
   font-weight: 600;
   opacity: 0;
@@ -493,7 +493,7 @@
 }
 
 .capability-number {
-  font-size: 48px;
+  font-size: 3rem; /* 48px - Large display */
   font-weight: 900;
   background: linear-gradient(135deg, #00ff00 0%, #00cc88 100%);
   -webkit-background-clip: text;
@@ -505,14 +505,14 @@
 
 .capability-card h3 {
   color: #fff;
-  font-size: 20px;
+  font-size: 1.25rem; /* 20px - H3 adjusted */
   font-weight: 700;
   margin-bottom: 12px;
 }
 
 .capability-card p {
   color: #aaa;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Small body text */
   line-height: 1.6;
   margin-bottom: 20px;
 }
@@ -528,7 +528,7 @@
   background: rgba(0, 255, 0, 0.1);
   border: 1px solid rgba(0, 255, 0, 0.3);
   border-radius: 16px;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small tag */
   color: #00ff00;
   font-weight: 500;
 }
@@ -552,14 +552,14 @@
 }
 
 .cta-content h2 {
-  font-size: 36px;
+  font-size: 2.25rem; /* 36px - H1/H2 range */
   font-weight: 700;
   color: #fff;
   margin-bottom: 12px;
 }
 
 .cta-content p {
-  font-size: 16px;
+  font-size: 1rem; /* 16px - Body text */
   color: #aaa;
   margin-bottom: 32px;
   max-width: 600px;
@@ -570,7 +570,7 @@
 .btn-cta {
   background: linear-gradient(135deg, #00ff00 0%, #00cc88 100%);
   color: #000;
-  font-size: 18px;
+  font-size: 1.125rem; /* 18px - Large button */
   padding: 18px 36px;
   box-shadow: 0 8px 32px rgba(0, 255, 0, 0.3);
 }
@@ -650,7 +650,7 @@
   }
   
   .hero-title {
-    font-size: 48px;
+    font-size: 3rem; /* 48px on tablet */
   }
   
   .capabilities-grid,
@@ -669,11 +669,11 @@
   }
   
   .hero-title {
-    font-size: 36px;
+    font-size: 2.25rem; /* 36px on mobile */
   }
   
   .subtitle-text {
-    font-size: 24px;
+    font-size: 1.5rem; /* 24px on mobile */
   }
   
   .live-stats {
@@ -700,30 +700,30 @@
   }
   
   .cta-content h2 {
-    font-size: 28px;
+    font-size: 1.75rem; /* 28px on mobile */
   }
 }
 
 @media (max-width: 480px) {
   .hero-title {
-    font-size: 28px;
+    font-size: 1.75rem; /* 28px on small mobile */
   }
   
   .subtitle-text {
-    font-size: 20px;
+    font-size: 1.25rem; /* 20px on small mobile */
   }
   
   .hero-subtitle {
-    font-size: 16px;
+    font-size: 1rem; /* 16px on small mobile */
   }
   
   .btn {
     padding: 14px 24px;
-    font-size: 14px;
+    font-size: 0.875rem; /* 14px on small mobile */
   }
   
   .section-title {
-    font-size: 28px;
+    font-size: 1.75rem; /* 28px on small mobile */
   }
   
   .ai-visualization {
@@ -737,7 +737,7 @@
   }
   
   .core-text {
-    font-size: 36px;
+    font-size: 2.25rem; /* 36px on small mobile */
   }
   
   .indicator {

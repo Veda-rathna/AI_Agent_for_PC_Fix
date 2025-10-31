@@ -19,7 +19,7 @@
 
 .header-content h1 {
   margin: 0 0 10px 0;
-  font-size: 32px;
+  font-size: 2rem; /* 32px - H1 */
   font-weight: 700;
   background: linear-gradient(135deg, #fff 0%, #888 100%);
   -webkit-background-clip: text;
@@ -30,7 +30,7 @@
 .subtitle {
   margin: 0;
   color: #888;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Small text */
 }
 
 /* Location Banner */
@@ -38,7 +38,7 @@
   margin-top: 15px;
   padding: 12px 20px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - UI element */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,7 +64,7 @@
   padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small button */
   transition: all 0.3s ease;
 }
 
@@ -92,7 +92,7 @@
   background: none;
   border: none;
   color: #dc3545;
-  font-size: 24px;
+  font-size: 1.5rem; /* 24px - Close icon */
   cursor: pointer;
   padding: 0;
   width: 30px;
@@ -128,7 +128,7 @@
 }
 
 .control-group label {
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small label */
   color: #888;
   font-weight: 500;
 }
@@ -139,7 +139,7 @@
   border: 1px solid #333;
   padding: 10px 14px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Input/select */
   cursor: pointer;
   transition: all 0.3s ease;
   outline: none;
@@ -212,13 +212,13 @@
 }
 
 .stat-number {
-  font-size: 24px;
+  font-size: 1.5rem; /* 24px - Display number */
   font-weight: 700;
   color: #007bff;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small caption */
   color: #666;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -269,13 +269,13 @@
 
 .popup-content h3 {
   margin: 0 0 8px 0;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - H4 */
   color: #007bff;
 }
 
 .popup-content .center-name {
   margin: 0 0 8px 0;
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Standard UI */
   font-weight: 600;
   color: #fff;
 }
@@ -283,7 +283,7 @@
 .popup-content .center-distance,
 .popup-content .center-phone {
   margin: 4px 0;
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small text */
   color: #aaa;
 }
 
@@ -296,7 +296,7 @@
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small button */
   font-weight: 600;
   transition: all 0.3s ease;
 }
@@ -327,7 +327,7 @@
 
 .list-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.25rem; /* 20px - H3 adjusted */
   font-weight: 600;
   color: #fff;
 }
@@ -377,11 +377,11 @@
 
 .no-results p {
   margin: 10px 0;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - Body text */
 }
 
 .no-results .hint {
-  font-size: 14px;
+  font-size: 0.875rem; /* 14px - Small hint */
   color: #555;
 }
 
@@ -419,7 +419,7 @@
 .brand-badge {
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small badge */
   font-weight: 700;
   color: #fff;
   text-transform: uppercase;
@@ -431,14 +431,14 @@
   color: #888;
   padding: 6px 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 0.75rem; /* 12px - Small badge */
   font-weight: 600;
   border: 1px solid #333;
 }
 
 .center-name {
   margin: 0 0 15px 0;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - H4 */
   font-weight: 600;
   color: #fff;
   line-height: 1.4;
@@ -455,12 +455,12 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Small text */
   color: #aaa;
 }
 
 .detail-row .icon {
-  font-size: 16px;
+  font-size: 1rem; /* 16px - Icon */
   flex-shrink: 0;
   width: 20px;
 }
@@ -484,7 +484,7 @@
   padding: 10px 16px;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 0.8125rem; /* 13px - Button text */
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -537,7 +537,7 @@
 
 .loading-container p {
   color: #888;
-  font-size: 16px;
+  font-size: 1rem; /* 16px - Body text */
 }
 
 /* Animations */
@@ -606,7 +606,7 @@
   }
 
   .header-content h1 {
-    font-size: 24px;
+    font-size: 1.5rem; /* 24px on mobile */
   }
 
   .controls-panel {
@@ -633,7 +633,7 @@
 
   .error-banner {
     margin: 15px 20px;
-    font-size: 13px;
+    font-size: 0.8125rem; /* 13px on mobile */
   }
 
   .center-actions {
@@ -647,11 +647,11 @@
   }
 
   .header-content h1 {
-    font-size: 20px;
+    font-size: 1.25rem; /* 20px on small mobile */
   }
 
   .subtitle {
-    font-size: 12px;
+    font-size: 0.75rem; /* 12px on small mobile */
   }
 
   .controls-panel {
@@ -663,7 +663,7 @@
   }
 
   .list-header h2 {
-    font-size: 18px;
+    font-size: 1.125rem; /* 18px on small mobile */
   }
 
   .centers-list {
