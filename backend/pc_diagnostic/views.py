@@ -17,6 +17,16 @@ from .hardware_monitor import HardwareMonitor
 from .report_generator import ReportGenerator
 from .hardware_hash import HardwareHashProtection
 
+# Import diagnostic tools for tool use
+from .diagnostic_tools import (
+    check_disk_health,
+    scan_event_logs,
+    verify_driver_integrity,
+    check_gpu_status,
+    test_memory,
+    check_network_connectivity
+)
+
 # Initialize hardware monitor and report generator
 hardware_monitor = HardwareMonitor()
 report_generator = ReportGenerator()
@@ -25,6 +35,113 @@ hardware_hash_protection = HardwareHashProtection()
 # Local LLM API Configuration
 LLM_API_BASE = "https://3ccc9499bbff.ngrok-free.app"
 LLM_MODEL_ID = "reasoning-llama-3.1-cot-re1-nmt-v2-orpo-i1"
+
+# Diagnostic Tools Configuration for Tool Use
+DIAGNOSTIC_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "check_disk_health",
+            "description": "Run SMART diagnostics on all drives to check for disk errors, failures, or low disk space. Use this when user reports slow performance, file access issues, or disk-related problems.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "drive_letter": {
+                        "type": "string",
+                        "description": "Specific drive to check (e.g., 'C'). Leave empty to check all drives"
+                    }
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scan_event_logs",
+            "description": "Scan Windows Event Viewer for errors related to hardware, drivers, crashes, or system failures. Essential for diagnosing BSODs, driver issues, hardware failures, and system crashes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "log_type": {
+                        "type": "string",
+                        "enum": ["System", "Application", "Hardware Events"],
+                        "description": "Type of event log to scan. System for hardware/driver errors, Application for software crashes"
+                    },
+                    "hours_back": {
+                        "type": "number",
+                        "description": "How many hours back to search (default: 24)"
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Specific keywords to search for (e.g., ['GPU', 'driver', 'crash', 'BSOD', 'display'])"
+                    }
+                },
+                "required": ["log_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "verify_driver_integrity",
+            "description": "Check if system drivers are properly signed, up-to-date, and functioning correctly. Use when diagnosing hardware malfunctions, display issues, network problems, or audio issues.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "device_type": {
+                        "type": "string",
+                        "enum": ["display", "network", "audio", "storage", "all"],
+                        "description": "Type of device drivers to verify. Choose based on the issue: display for screen problems, network for connectivity, audio for sound issues, storage for disk problems, all for comprehensive check"
+                    }
+                },
+                "required": ["device_type"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_gpu_status",
+            "description": "Check GPU status including drivers, functionality, and hardware detection. Use for screen issues, display problems, graphics errors, or gaming performance issues.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "test_memory",
+            "description": "Check RAM usage, memory pressure, and swap usage. Use when diagnosing crashes, freezes, slow performance, or out-of-memory errors.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_network_connectivity",
+            "description": "Test network connectivity, ping times, and network interface status. Use for internet connection issues, network slowness, or connectivity problems.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target": {
+                        "type": "string",
+                        "description": "IP address or hostname to ping (default: 8.8.8.8 - Google DNS)"
+                    }
+                },
+                "required": []
+            }
+        }
+    }
+]
 
 
 def generate_mock_analysis(issue_description, telemetry_data):
@@ -231,110 +348,46 @@ System Telemetry Data:
 Please provide a comprehensive diagnosis and solution based on this real-time system data.
 """
         
-        # Prepare the prompt for the reasoning model
+        # Prepare the prompt for the reasoning model with tool use support
         messages = [
             {
                 "role": "system",
                 "content": """
-You are an AI PC Diagnostic Assistant designed to troubleshoot and resolve computer hardware and software issues.
+You are an AI PC Diagnostic Assistant with access to real diagnostic tools.
 
-Your role involves two layers of response:
-1. Human-level conversation (visible to user)
-2. Machine Control Protocol (MCP) task generation (hidden JSON block)
+**Available Diagnostic Tools:**
+You can call real system diagnostic functions to gather specific data:
+- check_disk_health: Run SMART diagnostics on drives
+- scan_event_logs: Search Windows Event Viewer for errors
+- verify_driver_integrity: Check driver signatures and versions
+- check_gpu_status: Verify GPU hardware and drivers
+- test_memory: Check RAM usage and health
+- check_network_connectivity: Test network connectivity
 
----
+**Diagnostic Workflow:**
+1. Analyze the user's problem and available telemetry data
+2. Use diagnostic tools to gather additional specific information when needed
+3. Provide a comprehensive diagnosis based on all collected data
+4. Give clear, actionable solutions prioritized by likelihood of success
 
-1️⃣ **Visible User Conversation**
-- Respond naturally in an easy-to-understand tone.
-- Ask clarifying questions if needed.
-- Provide step-by-step manual or visual instructions that the user can perform themselves.
-- These are physical or user-level checks such as:
-  - "Check if the power cable is properly connected."
-  - "Try booting in Safe Mode."
-  - "Inspect your display for any visible damage."
-- Never mention any JSON or internal system processing to the user.
+**When to Use Tools:**
+- Use tools proactively to verify hypotheses
+- Call multiple tools if needed for comprehensive diagnosis
+- Always explain what you're checking and why
+- Use tool results to provide evidence-based recommendations
 
----
+**Response Guidelines:**
+- Be conversational and easy to understand
+- Explain technical findings in user-friendly terms
+- Provide step-by-step manual instructions for user actions
+- Use tool results to support your diagnosis
+- Prioritize solutions from most to least likely to work
 
-2️⃣ **Hidden MCP Task Generation**
-After your user-facing explanation, you must append a JSON block enclosed between <MCP_TASKS> and </MCP_TASKS>.
-
-Rules for MCP tasks:
-- Include only tasks that the system or diagnostic agent can perform or verify programmatically.
-- These are system-level, telemetry, or command-based actions.
-- Do not include tasks that require physical inspection or human intervention.
-- Generate as many relevant and required tasks as possible to ensure a complete diagnostic scope.
-  - Do not limit yourself to just 3–4 tasks.
-  - Cover all key checks that can be done by the computer for that issue.
-
-Examples of valid MCP tasks:
-- "Check GPU driver version and integrity"
-- "Scan Windows Event Log for GPU or display errors"
-- "Verify if monitor is detected through DDC/CI"
-- "Test PCI device enumeration for GPU"
-- "Check power supply voltage sensor readings"
-- "Analyze temperature logs for thermal shutdown patterns"
-
-Examples of invalid MCP tasks (must not appear):
-- "Check if the monitor cable is plugged in"
-- "Inspect screen for cracks"
-- "Clean the RAM sticks manually"
-
----
-
-3️⃣ **Response Format**
-Write the natural user response first.
-Then include the structured JSON block exactly like this:
-
-<MCP_TASKS>
-{
-  "tasks": [
-    "Comprehensive system-level diagnostic task 1",
-    "Comprehensive system-level diagnostic task 2",
-    "Comprehensive system-level diagnostic task 3"
-  ],
-  "summary": "Brief description of what the MCP should analyze or verify."
-}
-</MCP_TASKS>
-
----
-
-✅ **Example Output**
-
-User: "My screen isn't turning on."
-
-AI Output:
-Let's narrow this down.
-Please check whether your monitor cable is properly plugged into both ends.
-Press the Caps Lock key — if the indicator light toggles, your PC is on but the display may not be initializing.
-Try connecting your monitor to a different port or system to confirm the display is working.
-If it still doesn't show anything, I'll now check your system drivers and logs for possible GPU or display-related faults.
-
-<MCP_TASKS>
-{
-  "tasks": [
-    "Check GPU driver version and integrity",
-    "Verify GPU hardware presence through PCI bus enumeration",
-    "Check Windows Event Logs for display driver initialization failures",
-    "Scan system for recent BSOD or display-related kernel events",
-    "Validate DirectX diagnostic logs for rendering initialization errors",
-    "Check if connected monitor is detected through DDC/CI handshake",
-    "Inspect power delivery telemetry for GPU and display subsystems"
-  ],
-  "summary": "Perform deep analysis of GPU, display drivers, and event logs to detect potential display initialization failures."
-}
-</MCP_TASKS>
-
----
-
-IMPORTANT: You have access to real-time system telemetry data. Use this data to:
-1. Identify the root cause of the issue based on the telemetry data
-2. Provide specific diagnostic insights correlating symptoms with actual system metrics
-3. Offer step-by-step solutions prioritized by likelihood of success
-4. Recommend preventive measures to avoid future occurrences
-5. Highlight any critical system health issues discovered in the telemetry data
-
-Format your response with both the user-friendly conversation AND the MCP tasks block as shown above.
+**Important:**
+- You have access to real-time system telemetry data
+- Correlate symptoms with actual system metrics
+- Highlight any critical system health issues
+- Recommend preventive measures
 """
             },
             {
@@ -343,13 +396,16 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
             }
         ]
         
-        # Call the local reasoning model API
+        # Call the local reasoning model API with tool use support
         try:
+            print(f"🤖 Sending request to LLM with {len(DIAGNOSTIC_TOOLS)} available tools...")
+            
             response = requests.post(
                 f"{LLM_API_BASE}/v1/chat/completions",
                 json={
                     "model": LLM_MODEL_ID,
                     "messages": messages,
+                    "tools": DIAGNOSTIC_TOOLS,  # Include diagnostic tools
                     "temperature": 0.7,
                     "max_tokens": 3000
                 },
@@ -370,17 +426,176 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
             # Parse the response
             result = response.json()
             
-            # Extract the model's response
+            # Check if model requested tool calls
             if 'choices' in result and len(result['choices']) > 0:
                 choice = result['choices'][0]
-                
-                # Get the assistant's message content
-                prediction = choice.get('message', {}).get('content', '')
                 finish_reason = choice.get('finish_reason', 'unknown')
                 
-                # Get usage information
-                usage = result.get('usage', {})
-                model_used = result.get('model', LLM_MODEL_ID)
+                # Handle tool calls if requested
+                if finish_reason == 'tool_calls' and choice.get('message', {}).get('tool_calls'):
+                    tool_calls = choice['message']['tool_calls']
+                    print(f"🔧 Model requested {len(tool_calls)} tool calls")
+                    
+                    # Execute each requested tool
+                    tool_results = []
+                    tools_used = []
+                    
+                    for tool_call in tool_calls:
+                        function_name = tool_call['function']['name']
+                        arguments = json.loads(tool_call['function']['arguments'])
+                        
+                        print(f"  ▶ Executing: {function_name}({arguments})")
+                        
+                        # Execute the actual diagnostic function
+                        try:
+                            if function_name == 'check_disk_health':
+                                result_data = check_disk_health(**arguments)
+                            elif function_name == 'scan_event_logs':
+                                result_data = scan_event_logs(**arguments)
+                            elif function_name == 'verify_driver_integrity':
+                                result_data = verify_driver_integrity(**arguments)
+                            elif function_name == 'check_gpu_status':
+                                result_data = check_gpu_status(**arguments)
+                            elif function_name == 'test_memory':
+                                result_data = test_memory(**arguments)
+                            elif function_name == 'check_network_connectivity':
+                                result_data = check_network_connectivity(**arguments)
+                            else:
+                                result_data = {
+                                    'success': False,
+                                    'error': f'Unknown tool: {function_name}'
+                                }
+                            
+                            tools_used.append({
+                                'name': function_name,
+                                'arguments': arguments,
+                                'result': result_data
+                            })
+                            
+                            tool_results.append({
+                                "role": "tool",
+                                "content": json.dumps(result_data),
+                                "tool_call_id": tool_call['id']
+                            })
+                            
+                            print(f"  ✅ {function_name} completed")
+                            
+                        except Exception as tool_error:
+                            error_result = {
+                                'success': False,
+                                'error': f'Tool execution failed: {str(tool_error)}'
+                            }
+                            tool_results.append({
+                                "role": "tool",
+                                "content": json.dumps(error_result),
+                                "tool_call_id": tool_call['id']
+                            })
+                            print(f"  ❌ {function_name} failed: {str(tool_error)}")
+                    
+                    # Add tool call message and results to conversation
+                    messages.append({
+                        "role": "assistant",
+                        "tool_calls": [
+                            {
+                                "id": tc['id'],
+                                "type": tc['type'],
+                                "function": {
+                                    "name": tc['function']['name'],
+                                    "arguments": tc['function']['arguments']
+                                }
+                            }
+                            for tc in tool_calls
+                        ]
+                    })
+                    messages.extend(tool_results)
+                    
+                    # Get final response with tool results
+                    print("🤖 Getting final response with tool results...")
+                    final_response = requests.post(
+                        f"{LLM_API_BASE}/v1/chat/completions",
+                        json={
+                            "model": LLM_MODEL_ID,
+                            "messages": messages,
+                            "temperature": 0.7,
+                            "max_tokens": 3000
+                        },
+                        timeout=600
+                    )
+                    
+                    if final_response.status_code != 200:
+                        return Response({
+                            'success': False,
+                            'error': 'Failed to get final response after tool execution',
+                            'details': final_response.text
+                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    
+                    final_result = final_response.json()
+                    prediction = final_result['choices'][0]['message']['content']
+                    usage = final_result.get('usage', {})
+                    model_used = final_result.get('model', LLM_MODEL_ID)
+                    
+                    # Build response data with tool execution details
+                    response_data = {
+                        'success': True,
+                        'message': prediction,
+                        'prediction': prediction,
+                        'model': model_used,
+                        'finish_reason': 'tool_calls_completed',
+                        'session_id': session_id,
+                        'tools_used': [tool['name'] for tool in tools_used],
+                        'tool_results': tools_used,
+                        'telemetry_collected': True,
+                        'telemetry_summary': {
+                            'timestamp': telemetry_data.get('timestamp'),
+                            'system': telemetry_data.get('system_info', {}).get('platform'),
+                            'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
+                            'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
+                            'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
+                        },
+                        'usage': {
+                            'prompt_tokens': usage.get('prompt_tokens', 0),
+                            'completion_tokens': usage.get('completion_tokens', 0),
+                            'total_tokens': usage.get('total_tokens', 0)
+                        },
+                        'metadata': {
+                            'id': final_result.get('id', ''),
+                            'created': final_result.get('created', ''),
+                            'object': final_result.get('object', ''),
+                            'system_fingerprint': final_result.get('system_fingerprint', '')
+                        }
+                    }
+                    
+                    # Generate reports if requested
+                    if generate_report:
+                        try:
+                            # Include tool results in the report
+                            enhanced_telemetry = telemetry_data.copy()
+                            enhanced_telemetry['diagnostic_tools_executed'] = tools_used
+                            
+                            # Generate JSON report
+                            json_filename, json_filepath = report_generator.generate_json_report(
+                                input_text, enhanced_telemetry, prediction, session_id
+                            )
+                            
+                            response_data['reports'] = {
+                                'json': {
+                                    'filename': json_filename,
+                                    'download_url': f'/api/download_report/{json_filename}'
+                                }
+                            }
+                            
+                            print(f"📄 Report generated: {json_filename}")
+                            
+                        except Exception as report_error:
+                            print(f"❌ Report generation error: {str(report_error)}")
+                            response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+                    
+                    return Response(response_data)
+                
+                # No tool calls - handle as regular response
+                
+                # No tool calls - handle as regular response
+                prediction = choice.get('message', {}).get('content', '')
                 
                 if not prediction:
                     return Response(
@@ -390,6 +605,10 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                         },
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
+                
+                # Get usage information
+                usage = result.get('usage', {})
+                model_used = result.get('model', LLM_MODEL_ID)
                 
                 # Build response data
                 response_data = {
@@ -435,10 +654,10 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                             }
                         }
                         
-                        print(f"Report generated: {json_filename}")
+                        print(f"📄 Report generated: {json_filename}")
                         
                     except Exception as report_error:
-                        print(f"Report generation error: {str(report_error)}")
+                        print(f"❌ Report generation error: {str(report_error)}")
                         response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
                 
                 return Response(response_data)
