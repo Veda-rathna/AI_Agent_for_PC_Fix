@@ -145,61 +145,63 @@ const HardwareProtection = () => {
 
       <div className="tab-content">
         {activeTab === 'generate' && (
-          <div className="generate-section">
-            <div className="info-card">
-              <h2>Create Your Hardware Hash File Now</h2>
-              <p>
-                This tool will collect your system's hardware information including CPU, GPU, RAM,
-                storage devices, display adapters, and other components. It will create an encrypted,
-                read-only file that can be used later to verify if any hardware changes have occurred.
-              </p>
-              <div className="info-list">
-                <div className="info-item">
-                  <span>Encrypted with password protection</span>
-                </div>
-                <div className="info-item">
-                  <span>Captures all major hardware components</span>
-                </div>
-                <div className="info-item">
-                  <span>Read-only file prevents tampering</span>
-                </div>
-                <div className="info-item">
-                  <span>Detects service center replacements</span>
+          <>
+            <div className="generate-section">
+              <div className="info-card">
+                <h2>Create Your Hardware Hash File Now</h2>
+                <p>
+                  This tool will collect your system's hardware information including CPU, GPU, RAM,
+                  storage devices, display adapters, and other components. It will create an encrypted,
+                  read-only file that can be used later to verify if any hardware changes have occurred.
+                </p>
+                <div className="info-list">
+                  <div className="info-item">
+                    <span>Encrypted with password protection</span>
+                  </div>
+                  <div className="info-item">
+                    <span>Captures all major hardware components</span>
+                  </div>
+                  <div className="info-item">
+                    <span>Read-only file prevents tampering</span>
+                  </div>
+                  <div className="info-item">
+                    <span>Detects service center replacements</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="action-card">
-              <div className="input-group">
-                <label htmlFor="generate-password">Password (Optional)</label>
-                <input
-                  id="generate-password"
-                  type="password"
-                  placeholder="Leave empty for default password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="password-input"
-                />
-                <small>Use a strong password to secure your hardware hash file</small>
+              <div className="action-card">
+                <div className="input-group">
+                  <label htmlFor="generate-password">Password (Optional)</label>
+                  <input
+                    id="generate-password"
+                    type="password"
+                    placeholder="Leave empty for default password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="password-input"
+                  />
+                  <small>Use a strong password to secure your hardware hash file</small>
+                </div>
+
+                <button
+                  onClick={handleGenerateHash}
+                  disabled={generateLoading}
+                  className="primary-button"
+                >
+                  {generateLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      Generating Hardware Hash...
+                    </>
+                  ) : (
+                    <>
+                      <span>🔐</span>
+                      Generate Hardware Hash File
+                    </>
+                  )}
+                </button>
               </div>
-
-              <button
-                onClick={handleGenerateHash}
-                disabled={generateLoading}
-                className="primary-button"
-              >
-                {generateLoading ? (
-                  <>
-                    <span className="spinner"></span>
-                    Generating Hardware Hash...
-                  </>
-                ) : (
-                  <>
-                    <span>🔐</span>
-                    Generate Hardware Hash File
-                  </>
-                )}
-              </button>
             </div>
 
             {generateResult && (
@@ -243,65 +245,67 @@ const HardwareProtection = () => {
                 )}
               </div>
             )}
-          </div>
+          </>
         )}
 
         {activeTab === 'analyze' && (
-          <div className="analyze-section">
-            <div className="info-card">
-              <h2>Analyze Hardware Hash File</h2>
-              <p>
-                Upload a previously generated hardware hash file to compare it with your current
-                hardware configuration. This will detect any changes in components that may have
-                occurred since the file was created.
-              </p>
-              <div className="warning-box">
-                <span>Make sure to use the same password that was used to generate the file</span>
-              </div>
-            </div>
-
-            <div className="action-card">
-              <div className="input-group">
-                <label htmlFor="analyze-password">Password</label>
-                <input
-                  id="analyze-password"
-                  type="password"
-                  placeholder="Enter the password used during generation"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="password-input"
-                />
+          <>
+            <div className="analyze-section">
+              <div className="info-card">
+                <h2>Analyze Hardware Hash File</h2>
+                <p>
+                  Upload a previously generated hardware hash file to compare it with your current
+                  hardware configuration. This will detect any changes in components that may have
+                  occurred since the file was created.
+                </p>
+                <div className="warning-box">
+                  <span>Make sure to use the same password that was used to generate the file</span>
+                </div>
               </div>
 
-              <div className="file-upload-area">
-                <input
-                  type="file"
-                  id="hash-file-input"
-                  accept=".hwh"
-                  onChange={handleFileSelect}
-                  className="file-input"
-                />
-                <label htmlFor="hash-file-input" className="file-upload-label">
-                  {selectedFile ? selectedFile.name : 'Choose Hardware Hash File (.hwh)'}
-                </label>
-              </div>
+              <div className="action-card">
+                <div className="input-group">
+                  <label htmlFor="analyze-password">Password</label>
+                  <input
+                    id="analyze-password"
+                    type="password"
+                    placeholder="Enter the password used during generation"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="password-input"
+                  />
+                </div>
 
-              <button
-                onClick={handleAnalyzeHash}
-                disabled={analyzeLoading || !selectedFile}
-                className="primary-button"
-              >
-                {analyzeLoading ? (
-                  <>
-                    <span className="spinner"></span>
-                    Analyzing Hardware...
-                  </>
-                ) : (
-                  <>
-                    Analyze Hardware Changes
-                  </>
-                )}
-              </button>
+                <div className="file-upload-area">
+                  <input
+                    type="file"
+                    id="hash-file-input"
+                    accept=".hwh"
+                    onChange={handleFileSelect}
+                    className="file-input"
+                  />
+                  <label htmlFor="hash-file-input" className="file-upload-label">
+                    {selectedFile ? selectedFile.name : 'Choose Hardware Hash File (.hwh)'}
+                  </label>
+                </div>
+
+                <button
+                  onClick={handleAnalyzeHash}
+                  disabled={analyzeLoading || !selectedFile}
+                  className="primary-button"
+                >
+                  {analyzeLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      Analyzing Hardware...
+                    </>
+                  ) : (
+                    <>
+                      Analyze Hardware Changes
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {analyzeResult && (
@@ -419,7 +423,7 @@ const HardwareProtection = () => {
                 )}
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
     </div>
