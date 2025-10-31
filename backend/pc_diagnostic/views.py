@@ -370,9 +370,10 @@ You can call real system diagnostic functions to gather specific data:
 3. Provide a comprehensive diagnosis based on all collected data
 4. Give clear, actionable solutions prioritized by likelihood of success
 
-**When to Use Tools:**
-- Use tools proactively to verify hypotheses
-- Call multiple tools if needed for comprehensive diagnosis
+**IMPORTANT - Tool Usage Rules:**
+- **Call ONLY ONE tool at a time** (model limitation)
+- After receiving tool results, you can call another tool if needed
+- Choose the most relevant tool for the user's specific problem
 - Always explain what you're checking and why
 - Use tool results to provide evidence-based recommendations
 
@@ -397,50 +398,56 @@ You can call real system diagnostic functions to gather specific data:
         ]
         
         # Call the local reasoning model API with tool use support
+        # Support iterative tool calling (one tool at a time)
         try:
             print(f"🤖 Sending request to LLM with {len(DIAGNOSTIC_TOOLS)} available tools...")
             
-            response = requests.post(
-                f"{LLM_API_BASE}/v1/chat/completions",
-                json={
-                    "model": LLM_MODEL_ID,
-                    "messages": messages,
-                    "tools": DIAGNOSTIC_TOOLS,  # Include diagnostic tools
-                    "temperature": 0.7,
-                    "max_tokens": 3000
-                },
-                timeout=600  # 10 minutes timeout for reasoning models (they can take long to think)
-            )
+            # Track all tools used across iterations
+            all_tools_used = []
+            max_iterations = 5  # Prevent infinite loops
+            iteration = 0
             
-            # Check if the request was successful
-            if response.status_code != 200:
-                return Response(
-                    {
-                        'success': False,
-                        'error': f'Model API error: {response.status_code}',
-                        'details': response.text
-                    },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-            
-            # Parse the response
-            result = response.json()
-            
-            # Check if model requested tool calls
-            if 'choices' in result and len(result['choices']) > 0:
-                choice = result['choices'][0]
-                finish_reason = choice.get('finish_reason', 'unknown')
+            while iteration < max_iterations:
+                iteration += 1
+                print(f"🔄 Iteration {iteration}")
                 
-                # Handle tool calls if requested
-                if finish_reason == 'tool_calls' and choice.get('message', {}).get('tool_calls'):
-                    tool_calls = choice['message']['tool_calls']
-                    print(f"🔧 Model requested {len(tool_calls)} tool calls")
+                response = requests.post(
+                    f"{LLM_API_BASE}/v1/chat/completions",
+                    json={
+                        "model": LLM_MODEL_ID,
+                        "messages": messages,
+                        "tools": DIAGNOSTIC_TOOLS,  # Include diagnostic tools
+                        "temperature": 0.7,
+                        "max_tokens": 3000
+                    }
+                )
+                
+                # Check if the request was successful
+                if response.status_code != 200:
+                    return Response(
+                        {
+                            'success': False,
+                            'error': f'Model API error: {response.status_code}',
+                            'details': response.text
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                
+                # Parse the response
+                result = response.json()
+                
+                # Check if model requested tool calls
+                if 'choices' in result and len(result['choices']) > 0:
+                    choice = result['choices'][0]
+                    finish_reason = choice.get('finish_reason', 'unknown')
                     
-                    # Execute each requested tool
-                    tool_results = []
-                    tools_used = []
-                    
-                    for tool_call in tool_calls:
+                    # Handle tool calls if requested
+                    if finish_reason == 'tool_calls' and choice.get('message', {}).get('tool_calls'):
+                        tool_calls = choice['message']['tool_calls']
+                        print(f"🔧 Model requested {len(tool_calls)} tool call(s)")
+                        
+                        # Process only the first tool call (model limitation)
+                        tool_call = tool_calls[0]
                         function_name = tool_call['function']['name']
                         arguments = json.loads(tool_call['function']['arguments'])
                         
@@ -466,210 +473,135 @@ You can call real system diagnostic functions to gather specific data:
                                     'error': f'Unknown tool: {function_name}'
                                 }
                             
-                            tools_used.append({
+                            all_tools_used.append({
                                 'name': function_name,
                                 'arguments': arguments,
                                 'result': result_data
                             })
                             
-                            tool_results.append({
-                                "role": "tool",
-                                "content": json.dumps(result_data),
-                                "tool_call_id": tool_call['id']
-                            })
-                            
                             print(f"  ✅ {function_name} completed")
                             
                         except Exception as tool_error:
-                            error_result = {
+                            result_data = {
                                 'success': False,
                                 'error': f'Tool execution failed: {str(tool_error)}'
                             }
-                            tool_results.append({
-                                "role": "tool",
-                                "content": json.dumps(error_result),
-                                "tool_call_id": tool_call['id']
+                            all_tools_used.append({
+                                'name': function_name,
+                                'arguments': arguments,
+                                'result': result_data
                             })
                             print(f"  ❌ {function_name} failed: {str(tool_error)}")
-                    
-                    # Add tool call message and results to conversation
-                    messages.append({
-                        "role": "assistant",
-                        "tool_calls": [
-                            {
-                                "id": tc['id'],
-                                "type": tc['type'],
-                                "function": {
-                                    "name": tc['function']['name'],
-                                    "arguments": tc['function']['arguments']
+                        
+                        # Add tool call and result to conversation
+                        messages.append({
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "id": tool_call['id'],
+                                    "type": tool_call['type'],
+                                    "function": {
+                                        "name": tool_call['function']['name'],
+                                        "arguments": tool_call['function']['arguments']
+                                    }
                                 }
-                            }
-                            for tc in tool_calls
-                        ]
-                    })
-                    messages.extend(tool_results)
-                    
-                    # Get final response with tool results
-                    print("🤖 Getting final response with tool results...")
-                    final_response = requests.post(
-                        f"{LLM_API_BASE}/v1/chat/completions",
-                        json={
-                            "model": LLM_MODEL_ID,
-                            "messages": messages,
-                            "temperature": 0.7,
-                            "max_tokens": 3000
-                        },
-                        timeout=600
-                    )
-                    
-                    if final_response.status_code != 200:
-                        return Response({
-                            'success': False,
-                            'error': 'Failed to get final response after tool execution',
-                            'details': final_response.text
-                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                    
-                    final_result = final_response.json()
-                    prediction = final_result['choices'][0]['message']['content']
-                    usage = final_result.get('usage', {})
-                    model_used = final_result.get('model', LLM_MODEL_ID)
-                    
-                    # Build response data with tool execution details
-                    response_data = {
-                        'success': True,
-                        'message': prediction,
-                        'prediction': prediction,
-                        'model': model_used,
-                        'finish_reason': 'tool_calls_completed',
-                        'session_id': session_id,
-                        'tools_used': [tool['name'] for tool in tools_used],
-                        'tool_results': tools_used,
-                        'telemetry_collected': True,
-                        'telemetry_summary': {
-                            'timestamp': telemetry_data.get('timestamp'),
-                            'system': telemetry_data.get('system_info', {}).get('platform'),
-                            'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
-                            'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
-                            'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
-                        },
-                        'usage': {
-                            'prompt_tokens': usage.get('prompt_tokens', 0),
-                            'completion_tokens': usage.get('completion_tokens', 0),
-                            'total_tokens': usage.get('total_tokens', 0)
-                        },
-                        'metadata': {
-                            'id': final_result.get('id', ''),
-                            'created': final_result.get('created', ''),
-                            'object': final_result.get('object', ''),
-                            'system_fingerprint': final_result.get('system_fingerprint', '')
-                        }
-                    }
-                    
-                    # Generate reports if requested
-                    if generate_report:
-                        try:
-                            # Include tool results in the report
-                            enhanced_telemetry = telemetry_data.copy()
-                            enhanced_telemetry['diagnostic_tools_executed'] = tools_used
-                            
-                            # Generate JSON report
-                            json_filename, json_filepath = report_generator.generate_json_report(
-                                input_text, enhanced_telemetry, prediction, session_id
+                            ]
+                        })
+                        messages.append({
+                            "role": "tool",
+                            "content": json.dumps(result_data),
+                            "tool_call_id": tool_call['id']
+                        })
+                        
+                        # Continue to next iteration to see if model wants more tools
+                        continue
+                        
+                    else:
+                        # No tool calls - we have the final response
+                        prediction = choice.get('message', {}).get('content', '')
+                        
+                        if not prediction:
+                            return Response(
+                                {
+                                    'success': False,
+                                    'error': 'No content in model response'
+                                },
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR
                             )
-                            
-                            response_data['reports'] = {
-                                'json': {
-                                    'filename': json_filename,
-                                    'download_url': f'/api/download_report/{json_filename}'
-                                }
-                            }
-                            
-                            print(f"📄 Report generated: {json_filename}")
-                            
-                        except Exception as report_error:
-                            print(f"❌ Report generation error: {str(report_error)}")
-                            response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
-                    
-                    return Response(response_data)
-                
-                # No tool calls - handle as regular response
-                
-                # No tool calls - handle as regular response
-                prediction = choice.get('message', {}).get('content', '')
-                
-                if not prediction:
-                    return Response(
-                        {
-                            'success': False,
-                            'error': 'No content in model response'
-                        },
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                    )
-                
-                # Get usage information
-                usage = result.get('usage', {})
-                model_used = result.get('model', LLM_MODEL_ID)
-                
-                # Build response data
-                response_data = {
-                    'success': True,
-                    'message': prediction,
-                    'prediction': prediction,
-                    'model': model_used,
-                    'finish_reason': finish_reason,
-                    'session_id': session_id,
-                    'telemetry_collected': True,
-                    'telemetry_summary': {
-                        'timestamp': telemetry_data.get('timestamp'),
-                        'system': telemetry_data.get('system_info', {}).get('platform'),
-                        'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
-                        'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
-                        'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
-                    },
-                    'usage': {
-                        'prompt_tokens': usage.get('prompt_tokens', 0),
-                        'completion_tokens': usage.get('completion_tokens', 0),
-                        'total_tokens': usage.get('total_tokens', 0)
-                    },
-                    'metadata': {
-                        'id': result.get('id', ''),
-                        'created': result.get('created', ''),
-                        'object': result.get('object', ''),
-                        'system_fingerprint': result.get('system_fingerprint', '')
-                    }
-                }
-                
-                # Generate reports if requested
-                if generate_report:
-                    try:
-                        # Generate JSON report
-                        json_filename, json_filepath = report_generator.generate_json_report(
-                            input_text, telemetry_data, prediction, session_id
-                        )
                         
-                        response_data['reports'] = {
-                            'json': {
-                                'filename': json_filename,
-                                'download_url': f'/api/download_report/{json_filename}'
+                        # Get usage information
+                        usage = result.get('usage', {})
+                        model_used = result.get('model', LLM_MODEL_ID)
+                        
+                        # Build response data
+                        response_data = {
+                            'success': True,
+                            'message': prediction,
+                            'prediction': prediction,
+                            'model': model_used,
+                            'finish_reason': 'tool_calls_completed' if all_tools_used else finish_reason,
+                            'session_id': session_id,
+                            'telemetry_collected': True,
+                            'telemetry_summary': {
+                                'timestamp': telemetry_data.get('timestamp'),
+                                'system': telemetry_data.get('system_info', {}).get('platform'),
+                                'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
+                                'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
+                                'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
+                            },
+                            'usage': {
+                                'prompt_tokens': usage.get('prompt_tokens', 0),
+                                'completion_tokens': usage.get('completion_tokens', 0),
+                                'total_tokens': usage.get('total_tokens', 0)
+                            },
+                            'metadata': {
+                                'id': result.get('id', ''),
+                                'created': result.get('created', ''),
+                                'object': result.get('object', ''),
+                                'system_fingerprint': result.get('system_fingerprint', '')
                             }
                         }
                         
-                        print(f"📄 Report generated: {json_filename}")
+                        # Add tool information if tools were used
+                        if all_tools_used:
+                            response_data['tools_used'] = [tool['name'] for tool in all_tools_used]
+                            response_data['tool_results'] = all_tools_used
+                            response_data['iterations'] = iteration
                         
-                    except Exception as report_error:
-                        print(f"❌ Report generation error: {str(report_error)}")
-                        response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+                        # Generate reports if requested
+                        if generate_report:
+                            try:
+                                # Include tool results in the report
+                                enhanced_telemetry = telemetry_data.copy()
+                                if all_tools_used:
+                                    enhanced_telemetry['diagnostic_tools_executed'] = all_tools_used
+                                
+                                # Generate JSON report
+                                json_filename, json_filepath = report_generator.generate_json_report(
+                                    input_text, enhanced_telemetry, prediction, session_id
+                                )
+                                
+                                response_data['reports'] = {
+                                    'json': {
+                                        'filename': json_filename,
+                                        'download_url': f'/api/download_report/{json_filename}'
+                                    }
+                                }
+                                
+                                print(f"📄 Report generated: {json_filename}")
+                                
+                            except Exception as report_error:
+                                print(f"❌ Report generation error: {str(report_error)}")
+                                response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+                        
+                        return Response(response_data)
                 
-                return Response(response_data)
-                
-            else:
-                return Response(
-                    {
-                        'success': False,
-                        'error': 'No choices in model response'
-                    },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+            # Max iterations reached without final response
+            # Max iterations reached without final response
+            return Response({
+                'success': False,
+                'error': 'Max tool calling iterations reached'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         except requests.exceptions.ConnectionError:
             print("LLM API Error: Connection failed. Using offline diagnostic mode.")
