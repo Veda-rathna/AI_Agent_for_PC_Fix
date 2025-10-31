@@ -7,7 +7,7 @@ const Layout = ({ children }) => {
     <div className="layout">
       <header className="top-nav">
         <div className="nav-brand">
-          <h1>🔧 AutoMend</h1>
+          <h1>AutoMend</h1>
         </div>
         
         <nav className="nav-links">
@@ -16,7 +16,6 @@ const Layout = ({ children }) => {
             className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
             end
           >
-            <span className="nav-icon">🏠</span>
             <span className="nav-text">Home</span>
           </NavLink>
           
@@ -24,7 +23,6 @@ const Layout = ({ children }) => {
             to="/diagnosis" 
             className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
           >
-            <span className="nav-icon">🛡️</span>
             <span className="nav-text">Diagnosis</span>
           </NavLink>
           
@@ -32,7 +30,6 @@ const Layout = ({ children }) => {
             to="/hardware-protection" 
             className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
           >
-            <span className="nav-icon">🔐</span>
             <span className="nav-text">Hardware Protection</span>
           </NavLink>
           
@@ -40,7 +37,6 @@ const Layout = ({ children }) => {
             to="/about" 
             className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}
           >
-            <span className="nav-icon">ℹ️</span>
             <span className="nav-text">About</span>
           </NavLink>
         </nav>

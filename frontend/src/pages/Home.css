@@ -113,11 +113,6 @@
   box-shadow: 0 8px 24px rgba(255, 255, 255, 0.1);
 }
 
-.card-icon {
-  font-size: 36px;
-  margin-bottom: 12px;
-}
-
 .floating-card h3 {
   color: #fff;
   font-size: 18px;
@@ -161,11 +156,6 @@
   border-color: #fff;
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(255, 255, 255, 0.1);
-}
-
-.feature-icon {
-  font-size: 36px;
-  margin-bottom: 12px;
 }
 
 .feature-card h3 {

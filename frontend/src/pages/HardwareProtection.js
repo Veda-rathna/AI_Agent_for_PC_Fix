@@ -133,13 +133,13 @@ const HardwareProtection = () => {
           className={`tab-button ${activeTab === 'generate' ? 'active' : ''}`}
           onClick={() => setActiveTab('generate')}
         >
-          🛡️ Generate Hash File
+          Generate Hash File
         </button>
         <button
           className={`tab-button ${activeTab === 'analyze' ? 'active' : ''}`}
           onClick={() => setActiveTab('analyze')}
         >
-          🔍 Analyze Hash File
+          Analyze Hash File
         </button>
       </div>
 
@@ -155,19 +155,15 @@ const HardwareProtection = () => {
               </p>
               <div className="info-list">
                 <div className="info-item">
-                  <span className="icon">🔒</span>
                   <span>Encrypted with password protection</span>
                 </div>
                 <div className="info-item">
-                  <span className="icon">📋</span>
                   <span>Captures all major hardware components</span>
                 </div>
                 <div className="info-item">
-                  <span className="icon">🛡️</span>
                   <span>Read-only file prevents tampering</span>
                 </div>
                 <div className="info-item">
-                  <span className="icon">🔍</span>
                   <span>Detects service center replacements</span>
                 </div>
               </div>
@@ -260,7 +256,6 @@ const HardwareProtection = () => {
                 occurred since the file was created.
               </p>
               <div className="warning-box">
-                <span className="icon">⚠️</span>
                 <span>Make sure to use the same password that was used to generate the file</span>
               </div>
             </div>
@@ -287,7 +282,6 @@ const HardwareProtection = () => {
                   className="file-input"
                 />
                 <label htmlFor="hash-file-input" className="file-upload-label">
-                  <span className="icon">📁</span>
                   {selectedFile ? selectedFile.name : 'Choose Hardware Hash File (.hwh)'}
                 </label>
               </div>
@@ -304,7 +298,6 @@ const HardwareProtection = () => {
                   </>
                 ) : (
                   <>
-                    <span>🔍</span>
                     Analyze Hardware Changes
                   </>
                 )}
@@ -318,9 +311,9 @@ const HardwareProtection = () => {
                     <div className="analysis-header">
                       <h3>
                         {analyzeResult.comparison.overall_status === 'unchanged' ? (
-                          <>✅ No Hardware Changes Detected</>
+                          <>No Hardware Changes Detected</>
                         ) : (
-                          <>⚠️ Hardware Changes Detected</>
+                          <>Hardware Changes Detected</>
                         )}
                       </h3>
                     </div>
@@ -386,7 +379,7 @@ const HardwareProtection = () => {
 
                     {analyzeResult.comparison.changeable_components_changes.length > 0 && (
                       <div className="changes-section">
-                        <h4>🔧 Component Changes</h4>
+                        <h4>Component Changes</h4>
                         <p>These components may have been replaced in a service center:</p>
                         {analyzeResult.comparison.changeable_components_changes.map((change, index) => (
                           <div key={index} className="change-item">

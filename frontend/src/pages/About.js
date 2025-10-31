@@ -13,7 +13,6 @@ const About = () => {
       
       <div className="about-content">
         <section className="about-section">
-          <div className="section-icon">🎯</div>
           <h2>Our Mission</h2>
           <p>
             We're dedicated to making computer hardware diagnostics accessible to everyone. 
@@ -23,7 +22,6 @@ const About = () => {
         </section>
         
         <section className="about-section">
-          <div className="section-icon">🚀</div>
           <h2>What We Do</h2>
           <p>
             Our platform combines cutting-edge artificial intelligence with deep hardware 
@@ -34,7 +32,6 @@ const About = () => {
         </section>
         
         <section className="about-section">
-          <div className="section-icon">⚡</div>
           <h2>Key Features</h2>
           <div className="features-list">
             <div className="feature-item">

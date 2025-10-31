@@ -89,7 +89,7 @@ const DiagnosticChat = () => {
       console.error('Error:', err);
       
       if (err.name === 'AbortError') {
-        setError('⚠️ Request timed out after 10 minutes. The reasoning model is taking unusually long. This could mean: 1) The model is processing a very complex query, 2) The model server is overloaded. Please try: 1) A simpler question, 2) Restarting the model server, 3) Checking server logs for errors.');
+        setError('Request timed out after 10 minutes. The reasoning model is taking unusually long. This could mean: 1) The model is processing a very complex query, 2) The model server is overloaded. Please try: 1) A simpler question, 2) Restarting the model server, 3) Checking server logs for errors.');
       } else if (err.message === 'Failed to fetch') {
         setError('❌ Could not connect to the backend server. Please ensure: 1) Backend is running at http://localhost:8000, 2) No firewall blocking the connection, 3) Check terminal for backend errors.');
       } else {
@@ -101,28 +101,89 @@ const DiagnosticChat = () => {
   };
 
   const formatMessage = (content) => {
+    // Helper function to parse inline formatting (bold, italic, code)
+    const parseInlineFormatting = (text) => {
+      const parts = [];
+      let currentIndex = 0;
+      let key = 0;
+
+      // Regular expression to match **bold**, *italic*, and `code`
+      const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`)/g;
+      let match;
+
+      while ((match = regex.exec(text)) !== null) {
+        // Add text before the match
+        if (match.index > currentIndex) {
+          parts.push(text.substring(currentIndex, match.index));
+        }
+
+        const matchedText = match[0];
+        
+        // Handle bold **text**
+        if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+          parts.push(
+            <strong key={`bold-${key++}`}>
+              {matchedText.substring(2, matchedText.length - 2)}
+            </strong>
+          );
+        }
+        // Handle italic *text*
+        else if (matchedText.startsWith('*') && matchedText.endsWith('*') && !matchedText.startsWith('**')) {
+          parts.push(
+            <em key={`italic-${key++}`}>
+              {matchedText.substring(1, matchedText.length - 1)}
+            </em>
+          );
+        }
+        // Handle code `text`
+        else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
+          parts.push(
+            <code key={`code-${key++}`}>
+              {matchedText.substring(1, matchedText.length - 1)}
+            </code>
+          );
+        }
+
+        currentIndex = match.index + matchedText.length;
+      }
+
+      // Add remaining text
+      if (currentIndex < text.length) {
+        parts.push(text.substring(currentIndex));
+      }
+
+      return parts.length > 0 ? parts : text;
+    };
+
     // Convert markdown-style formatting to HTML
-    // This is a simple implementation - you might want to use a proper markdown library
     return content
       .split('\n')
       .map((line, index) => {
         // Handle headers
         if (line.startsWith('### ')) {
-          return <h3 key={index}>{line.substring(4)}</h3>;
+          return <h3 key={index}>{parseInlineFormatting(line.substring(4))}</h3>;
         }
         if (line.startsWith('## ')) {
-          return <h2 key={index}>{line.substring(3)}</h2>;
+          return <h2 key={index}>{parseInlineFormatting(line.substring(3))}</h2>;
         }
-        if (line.startsWith('**') && line.endsWith('**')) {
-          return <strong key={index}>{line.substring(2, line.length - 2)}</strong>;
+        if (line.startsWith('# ')) {
+          return <h1 key={index}>{parseInlineFormatting(line.substring(2))}</h1>;
         }
         // Handle bullet points
-        if (line.trim().startsWith('*   ') || line.trim().startsWith('- ')) {
-          return <li key={index}>{line.trim().substring(4)}</li>;
+        if (line.trim().startsWith('* ') || line.trim().startsWith('- ')) {
+          const bulletText = line.trim().startsWith('* ') 
+            ? line.trim().substring(2) 
+            : line.trim().substring(2);
+          return <li key={index}>{parseInlineFormatting(bulletText)}</li>;
+        }
+        // Handle numbered lists
+        if (/^\d+\.\s/.test(line.trim())) {
+          const listText = line.trim().replace(/^\d+\.\s/, '');
+          return <li key={index}>{parseInlineFormatting(listText)}</li>;
         }
         // Regular paragraph
         if (line.trim()) {
-          return <p key={index}>{line}</p>;
+          return <p key={index}>{parseInlineFormatting(line)}</p>;
         }
         return <br key={index} />;
       });
@@ -134,7 +195,6 @@ const DiagnosticChat = () => {
       {messages.length === 0 && !isLoading && (
         <div className="welcome-screen">
           <div className="welcome-content">
-            <div className="welcome-icon">🔧</div>
             <h1>AutoMend AI Diagnostic</h1>
             <p>Describe your PC issue and I'll help you diagnose and fix it</p>
             <div className="example-prompts">
@@ -172,7 +232,7 @@ const DiagnosticChat = () => {
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.type}`}>
             <div className="message-avatar">
-              {msg.type === 'user' ? '👤' : '🤖'}
+              {msg.type === 'user' ? 'U' : 'AI'}
             </div>
             <div className="message-body">
               <div className="message-content">
@@ -191,27 +251,28 @@ const DiagnosticChat = () => {
 
         {isLoading && (
           <div className="message assistant">
-            <div className="message-avatar">🤖</div>
+            <div className="message-avatar">AI</div>
             <div className="message-body">
               <div className="message-content">
                 <div className="typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <div className="processing-info">
-                  {processingTime > 5 && processingTime <= 30 && (
-                    <small>🧠 Reasoning model is thinking... ({processingTime}s)</small>
-                  )}
-                  {processingTime > 30 && processingTime <= 90 && (
-                    <small>🔍 Deep analysis in progress... ({processingTime}s) - Reasoning models take time for complex queries</small>
-                  )}
-                  {processingTime > 90 && processingTime <= 180 && (
-                    <small>⏳ Still processing... ({processingTime}s) - Model is performing detailed reasoning</small>
-                  )}
-                  {processingTime > 180 && (
-                    <small>⚠️ Taking longer than usual... ({processingTime}s) - Please wait, the model should respond soon (max 10 minutes)</small>
-                  )}
+                  <div className="spinner"></div>
+                  <span className="processing-info">
+                    {processingTime <= 5 && (
+                      <small>Thinking...</small>
+                    )}
+                    {processingTime > 5 && processingTime <= 30 && (
+                      <small>Reasoning model is thinking... ({processingTime}s)</small>
+                    )}
+                    {processingTime > 30 && processingTime <= 90 && (
+                      <small>Deep analysis in progress... ({processingTime}s) - Reasoning models take time for complex queries</small>
+                    )}
+                    {processingTime > 90 && processingTime <= 180 && (
+                      <small>Still processing... ({processingTime}s) - Model is performing detailed reasoning</small>
+                    )}
+                    {processingTime > 180 && (
+                      <small>Taking longer than usual... ({processingTime}s) - Please wait, the model should respond soon (max 10 minutes)</small>
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -220,7 +281,7 @@ const DiagnosticChat = () => {
 
         {error && (
           <div className="error-message">
-            <strong>⚠️ Error:</strong> {error}
+            <strong>Error:</strong> {error}
           </div>
         )}
         
