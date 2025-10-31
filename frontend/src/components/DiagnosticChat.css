@@ -1,11 +1,24 @@
 /* Diagnostic Chat Styles - ChatGPT/Grok Style */
 .diagnostic-chat {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100%;
   width: 100%;
   background: #000;
   position: relative;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  margin-left: 320px; /* Space for expanded sidebar */
+  transition: margin-left 0.3s ease;
+}
+
+.conversation-history.collapsed + .chat-container {
+  margin-left: 50px; /* Space for collapsed sidebar */
 }
 
 /* Welcome Screen */

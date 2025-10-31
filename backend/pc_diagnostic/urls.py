@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from . import views
+from ai_diagnostic import conversation_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -31,4 +32,13 @@ urlpatterns = [
     path('api/hardware-hash/generate/', views.generate_hardware_hash, name='generate_hardware_hash'),
     path('api/hardware-hash/analyze/', views.analyze_hardware_hash, name='analyze_hardware_hash'),
     path('api/download_hardware_hash/<str:filename>/', views.download_hardware_hash, name='download_hardware_hash'),
+    
+    # Conversation Management endpoints
+    path('api/conversations/', conversation_views.list_conversations, name='list_conversations'),
+    path('api/conversations/create/', conversation_views.create_conversation, name='create_conversation'),
+    path('api/conversations/<uuid:conversation_id>/', conversation_views.get_conversation, name='get_conversation'),
+    path('api/conversations/<uuid:conversation_id>/update/', conversation_views.update_conversation, name='update_conversation'),
+    path('api/conversations/<uuid:conversation_id>/delete/', conversation_views.delete_conversation, name='delete_conversation'),
+    path('api/conversations/<uuid:conversation_id>/messages/', conversation_views.add_message, name='add_message'),
+    path('api/conversations/save-bulk/', conversation_views.save_conversation_bulk, name='save_conversation_bulk'),
 ]

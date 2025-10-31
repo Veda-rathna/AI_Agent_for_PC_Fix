@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './DiagnosticChat.css';
+import ConversationHistory from './ConversationHistory';
 
 const DiagnosticChat = () => {
   const [inputText, setInputText] = useState('');
@@ -8,6 +9,8 @@ const DiagnosticChat = () => {
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const [processingTime, setProcessingTime] = useState(0);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -27,6 +30,77 @@ const DiagnosticChat = () => {
       if (interval) clearInterval(interval);
     };
   }, [isLoading]);
+
+  // Auto-save conversation whenever messages change
+  useEffect(() => {
+    if (messages.length > 0 && !isLoading && !isSaving) {
+      saveConversation();
+    }
+  }, [messages, isLoading]);
+
+  const saveConversation = async () => {
+    if (messages.length === 0) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('http://localhost:8000/api/conversations/save-bulk/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation_id: currentConversationId,
+          messages: messages
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && !currentConversationId) {
+        // Set the conversation ID for future saves
+        setCurrentConversationId(data.conversation.id);
+      }
+    } catch (err) {
+      console.error('Error saving conversation:', err);
+      // Fail silently - don't interrupt user experience
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const loadConversation = async (conversationId) => {
+    if (!conversationId) {
+      // Start new conversation
+      setMessages([]);
+      setCurrentConversationId(null);
+      setError(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/conversations/${conversationId}/`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const loadedMessages = data.conversation.messages.map(msg => ({
+          type: msg.message_type,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          model: msg.model_name,
+          finishReason: msg.finish_reason,
+          usage: msg.tokens_used ? { total_tokens: msg.tokens_used } : null,
+          session_id: msg.session_id
+        }));
+        
+        setMessages(loadedMessages);
+        setCurrentConversationId(conversationId);
+        setError(null);
+      }
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+      setError('Failed to load conversation');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -191,6 +265,13 @@ const DiagnosticChat = () => {
 
   return (
     <div className="diagnostic-chat">
+      {/* Conversation History Sidebar */}
+      <ConversationHistory 
+        onSelectConversation={loadConversation}
+        currentConversationId={currentConversationId}
+      />
+      
+      <div className="chat-container">
       {/* Welcome Screen - shown when no messages */}
       {messages.length === 0 && !isLoading && (
         <div className="welcome-screen">
@@ -310,6 +391,7 @@ const DiagnosticChat = () => {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 };
