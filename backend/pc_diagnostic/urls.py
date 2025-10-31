@@ -23,4 +23,7 @@ urlpatterns = [
     path('api/diagnose/', views.diagnose, name='diagnose'),
     path('api/predict/', views.predict, name='predict'),
     path('api/upload/', views.upload_file, name='upload_file'),
+    path('api/telemetry/', views.get_telemetry, name='get_telemetry'),
+    path('api/reports/', views.list_reports, name='list_reports'),
+    path('api/download_report/<str:filename>/', views.download_report, name='download_report'),
 ]

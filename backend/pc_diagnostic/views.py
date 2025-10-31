@@ -3,14 +3,112 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.conf import settings
+from django.http import FileResponse, Http404
 import random
 import requests
 import os
+import uuid
+import json
 
+# Import hardware monitoring modules
+from .hardware_monitor import HardwareMonitor
+from .report_generator import ReportGenerator
+
+# Initialize hardware monitor and report generator
+hardware_monitor = HardwareMonitor()
+report_generator = ReportGenerator()
 
 # Local LLM API Configuration
 LLM_API_BASE = "https://3ccc9499bbff.ngrok-free.app"
 LLM_MODEL_ID = "reasoning-llama-3.1-cot-re1-nmt-v2-orpo-i1"
+
+
+def generate_mock_analysis(issue_description, telemetry_data):
+    """Generate a mock diagnostic analysis when LLM server is unavailable"""
+    
+    # Analyze the telemetry data to provide a basic diagnosis
+    analysis_sections = []
+    
+    # System Overview
+    system_info = telemetry_data.get('system_info', {})
+    analysis_sections.append(f"""
+## System Analysis for: {issue_description}
+
+**System Information:**
+- Platform: {system_info.get('platform', 'Unknown')}
+- Processor: {system_info.get('processor', 'Unknown')}
+- Architecture: {system_info.get('machine', 'Unknown')}
+- Python Version: {system_info.get('python_version', 'Unknown')}
+""")
+
+    # CPU Analysis
+    cpu_data = telemetry_data.get('cpu', {})
+    if cpu_data:
+        cpu_usage = cpu_data.get('total_usage', 0)
+        analysis_sections.append(f"""
+**CPU Analysis:**
+- Current Usage: {cpu_usage:.1f}%
+- Status: {'⚠️ High Usage' if cpu_usage > 80 else '✅ Normal' if cpu_usage < 50 else '⚡ Moderate Usage'}
+""")
+
+    # Memory Analysis
+    memory_data = telemetry_data.get('memory', {})
+    if memory_data:
+        memory_usage = memory_data.get('percentage', 0)
+        memory_total = memory_data.get('total', 0)
+        analysis_sections.append(f"""
+**Memory Analysis:**
+- Usage: {memory_usage:.1f}% ({memory_total // (1024**3):.1f} GB total)
+- Status: {'⚠️ High Memory Usage' if memory_usage > 85 else '✅ Normal' if memory_usage < 70 else '⚡ Moderate Usage'}
+""")
+
+    # Basic Recommendations
+    recommendations = []
+    
+    if 'screen' in issue_description.lower() or 'display' in issue_description.lower():
+        recommendations.extend([
+            "1. **Update Graphics Drivers**: Check Device Manager for display adapter updates",
+            "2. **Check Cable Connections**: Ensure monitor cables are securely connected",
+            "3. **Adjust Refresh Rate**: Try lowering the display refresh rate",
+            "4. **Test Different Monitor**: Connect to another display to isolate the issue"
+        ])
+    elif 'slow' in issue_description.lower() or 'performance' in issue_description.lower():
+        if cpu_usage > 80:
+            recommendations.append("1. **High CPU Usage Detected**: Check Task Manager for resource-intensive processes")
+        if memory_usage > 85:
+            recommendations.append("2. **High Memory Usage**: Consider closing unnecessary applications or adding more RAM")
+        recommendations.extend([
+            "3. **Disk Cleanup**: Run disk cleanup and defragmentation",
+            "4. **Startup Programs**: Disable unnecessary startup programs",
+            "5. **Malware Scan**: Run a full system antivirus scan"
+        ])
+    else:
+        recommendations.extend([
+            "1. **System Update**: Ensure Windows is up to date",
+            "2. **Driver Updates**: Check Device Manager for any driver issues",
+            "3. **Event Viewer**: Check Windows Event Viewer for error messages",
+            "4. **Safe Mode**: Test if the issue persists in Safe Mode"
+        ])
+
+    # Combine all sections
+    mock_response = "\n".join(analysis_sections)
+    
+    if recommendations:
+        mock_response += "\n\n## Recommended Solutions:\n\n"
+        mock_response += "\n".join(recommendations)
+    
+    mock_response += f"""
+
+## Next Steps:
+1. **Try the recommended solutions** in order of priority
+2. **Monitor system performance** using the collected telemetry data
+3. **Contact support** if issues persist with the detailed diagnostic report
+
+---
+*Note: This analysis was generated using offline diagnostic capabilities. For more detailed AI-powered analysis, ensure the reasoning model server is available.*
+"""
+    
+    return mock_response
 
 
 @api_view(['POST'])
@@ -48,12 +146,13 @@ def diagnose(request):
 @api_view(['POST'])
 def predict(request):
     """
-    Handle prediction requests using the local reasoning model
+    Handle prediction requests using the local reasoning model with telemetry data
     
     Request Body:
         {
             "input_text": "User's problem description",
-            "telemetry_data": {...}  // Optional: system telemetry data
+            "telemetry_data": {...},  // Optional: system telemetry data
+            "generate_report": true   // Optional: generate downloadable report
         }
     
     Response:
@@ -62,6 +161,10 @@ def predict(request):
             "message": "The AI assistant's full response text",
             "model": "model-name",
             "finish_reason": "stop",
+            "session_id": "uuid",
+            "telemetry_collected": true,
+            "telemetry_summary": {...},
+            "reports": {...},  // If generate_report=true
             "usage": {...},
             "metadata": {...}
         }
@@ -69,7 +172,8 @@ def predict(request):
     try:
         # Extract input from the request
         input_text = request.data.get('input_text', '')
-        telemetry_data = request.data.get('telemetry_data', None)
+        provided_telemetry = request.data.get('telemetry_data', None)
+        generate_report = request.data.get('generate_report', False)
         
         if not input_text:
             return Response(
@@ -80,10 +184,48 @@ def predict(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Prepare the user message with optional telemetry data
-        user_message = input_text
-        if telemetry_data:
-            user_message += f"\n\nSystem Telemetry Data:\n{telemetry_data}"
+        # Generate session ID for this diagnosis
+        session_id = str(uuid.uuid4())
+        
+        # Collect system telemetry data based on the issue type
+        print(f"Collecting telemetry data for issue: {input_text}")
+        
+        if provided_telemetry:
+            telemetry_data = provided_telemetry
+        else:
+            telemetry_data = hardware_monitor.get_system_health(input_text)
+        
+        # Check telemetry data size and potentially summarize if too large
+        telemetry_json = json.dumps(telemetry_data, indent=2, default=str)
+        telemetry_size = len(telemetry_json)
+        
+        # If telemetry data is very large (>20KB), create a summary instead
+        if telemetry_size > 20000:
+            print(f"⚠️ Telemetry data is large ({telemetry_size} chars), creating summary...")
+            telemetry_summary = {
+                'timestamp': telemetry_data.get('timestamp'),
+                'system_info': telemetry_data.get('system_info'),
+                'cpu': {
+                    'total_usage': telemetry_data.get('cpu', {}).get('total_usage'),
+                    'per_cpu_usage': 'omitted for brevity'
+                },
+                'memory': telemetry_data.get('memory'),
+                'disk': 'omitted for brevity' if len(str(telemetry_data.get('disk', {}))) > 1000 else telemetry_data.get('disk'),
+                'issue_specific': telemetry_data.get('issue_specific'),
+                'note': 'Full telemetry data available in generated report'
+            }
+            telemetry_json = json.dumps(telemetry_summary, indent=2, default=str)
+            print(f"✅ Summarized to {len(telemetry_json)} chars")
+        
+        # Prepare the enhanced prompt with telemetry data
+        user_prompt = f"""
+User Problem: {input_text}
+
+System Telemetry Data:
+{telemetry_json}
+
+Please provide a comprehensive diagnosis and solution based on this real-time system data.
+"""
         
         # Prepare the prompt for the reasoning model
         messages = [
@@ -178,93 +320,185 @@ If it still doesn't show anything, I'll now check your system drivers and logs f
   "summary": "Perform deep analysis of GPU, display drivers, and event logs to detect potential display initialization failures."
 }
 </MCP_TASKS>
+
+---
+
+IMPORTANT: You have access to real-time system telemetry data. Use this data to:
+1. Identify the root cause of the issue based on the telemetry data
+2. Provide specific diagnostic insights correlating symptoms with actual system metrics
+3. Offer step-by-step solutions prioritized by likelihood of success
+4. Recommend preventive measures to avoid future occurrences
+5. Highlight any critical system health issues discovered in the telemetry data
+
+Format your response with both the user-friendly conversation AND the MCP tasks block as shown above.
 """
             },
             {
                 "role": "user",
-                "content": user_message
+                "content": user_prompt
             }
         ]
         
         # Call the local reasoning model API
-        response = requests.post(
-            f"{LLM_API_BASE}/v1/chat/completions",
-            json={
-                "model": LLM_MODEL_ID,
-                "messages": messages,
-                "temperature": 0.7,
-                "max_tokens": 1000
-            },
-            timeout=120  # Reasoning models may take longer
-        )
-        
-        # Check if the request was successful
-        if response.status_code != 200:
-            return Response(
-                {
-                    'success': False,
-                    'error': f'Model API error: {response.status_code}',
-                    'details': response.text
+        try:
+            response = requests.post(
+                f"{LLM_API_BASE}/v1/chat/completions",
+                json={
+                    "model": LLM_MODEL_ID,
+                    "messages": messages,
+                    "temperature": 0.7,
+                    "max_tokens": 3000
                 },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                timeout=120  # Reasoning models may take longer
             )
-        
-        # Parse the response
-        result = response.json()
-        
-        # Extract the model's response
-        if 'choices' in result and len(result['choices']) > 0:
-            choice = result['choices'][0]
             
-            # Get the assistant's message content
-            prediction = choice.get('message', {}).get('content', '')
-            finish_reason = choice.get('finish_reason', 'unknown')
-            
-            # Get usage information
-            usage = result.get('usage', {})
-            prompt_tokens = usage.get('prompt_tokens', 0)
-            completion_tokens = usage.get('completion_tokens', 0)
-            total_tokens = usage.get('total_tokens', 0)
-            
-            # Get model info
-            model_used = result.get('model', LLM_MODEL_ID)
-            
-            if not prediction:
+            # Check if the request was successful
+            if response.status_code != 200:
                 return Response(
                     {
                         'success': False,
-                        'error': 'No content in model response'
+                        'error': f'Model API error: {response.status_code}',
+                        'details': response.text
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            return Response({
+            # Parse the response
+            result = response.json()
+            
+            # Extract the model's response
+            if 'choices' in result and len(result['choices']) > 0:
+                choice = result['choices'][0]
+                
+                # Get the assistant's message content
+                prediction = choice.get('message', {}).get('content', '')
+                finish_reason = choice.get('finish_reason', 'unknown')
+                
+                # Get usage information
+                usage = result.get('usage', {})
+                model_used = result.get('model', LLM_MODEL_ID)
+                
+                if not prediction:
+                    return Response(
+                        {
+                            'success': False,
+                            'error': 'No content in model response'
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+                
+                # Build response data
+                response_data = {
+                    'success': True,
+                    'message': prediction,
+                    'prediction': prediction,
+                    'model': model_used,
+                    'finish_reason': finish_reason,
+                    'session_id': session_id,
+                    'telemetry_collected': True,
+                    'telemetry_summary': {
+                        'timestamp': telemetry_data.get('timestamp'),
+                        'system': telemetry_data.get('system_info', {}).get('platform'),
+                        'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
+                        'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
+                        'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
+                    },
+                    'usage': {
+                        'prompt_tokens': usage.get('prompt_tokens', 0),
+                        'completion_tokens': usage.get('completion_tokens', 0),
+                        'total_tokens': usage.get('total_tokens', 0)
+                    },
+                    'metadata': {
+                        'id': result.get('id', ''),
+                        'created': result.get('created', ''),
+                        'object': result.get('object', ''),
+                        'system_fingerprint': result.get('system_fingerprint', '')
+                    }
+                }
+                
+                # Generate reports if requested
+                if generate_report:
+                    try:
+                        # Generate JSON report
+                        json_filename, json_filepath = report_generator.generate_json_report(
+                            input_text, telemetry_data, prediction, session_id
+                        )
+                        
+                        response_data['reports'] = {
+                            'json': {
+                                'filename': json_filename,
+                                'download_url': f'/api/download_report/{json_filename}'
+                            }
+                        }
+                        
+                        print(f"Report generated: {json_filename}")
+                        
+                    except Exception as report_error:
+                        print(f"Report generation error: {str(report_error)}")
+                        response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+                
+                return Response(response_data)
+                
+            else:
+                return Response(
+                    {
+                        'success': False,
+                        'error': 'No choices in model response'
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        except requests.exceptions.ConnectionError:
+            print("LLM API Error: Connection failed. Using offline diagnostic mode.")
+            
+            # Use simplified fallback analysis
+            prediction = generate_mock_analysis(input_text, telemetry_data)
+            model_used = "Offline Diagnostic Engine"
+            finish_reason = "offline_mode"
+            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            
+            response_data = {
                 'success': True,
-                'message': prediction,  # Main field for frontend to display
-                'prediction': prediction,  # Kept for backward compatibility
+                'prediction': prediction,
+                'message': prediction,
                 'model': model_used,
                 'finish_reason': finish_reason,
-                'usage': {
-                    'prompt_tokens': prompt_tokens,
-                    'completion_tokens': completion_tokens,
-                    'total_tokens': total_tokens
+                'session_id': session_id,
+                'telemetry_collected': True,
+                'telemetry_summary': {
+                    'timestamp': telemetry_data.get('timestamp'),
+                    'system': telemetry_data.get('system_info', {}).get('platform'),
+                    'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
+                    'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
+                    'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
                 },
+                'usage': usage,
                 'metadata': {
-                    'id': result.get('id', ''),
-                    'created': result.get('created', ''),
-                    'object': result.get('object', ''),
-                    'system_fingerprint': result.get('system_fingerprint', '')
-                },
-                'processing_time': result.get('created', 0)  # Timestamp for reference
-            })
-        else:
-            return Response(
-                {
-                    'success': False,
-                    'error': 'No choices in model response'
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+                    'id': '',
+                    'created': '',
+                    'object': '',
+                    'system_fingerprint': ''
+                }
+            }
+            
+            # Generate reports if requested
+            if generate_report:
+                try:
+                    json_filename, json_filepath = report_generator.generate_json_report(
+                        input_text, telemetry_data, prediction, session_id
+                    )
+                    
+                    response_data['reports'] = {
+                        'json': {
+                            'filename': json_filename,
+                            'download_url': f'/api/download_report/{json_filename}'
+                        }
+                    }
+                except Exception as report_error:
+                    print(f"Report generation error: {str(report_error)}")
+                    response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+            
+            return Response(response_data)
     
     except requests.exceptions.Timeout:
         return Response(
@@ -336,3 +570,60 @@ def upload_file(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+def download_report(request, filename):
+    """Download generated diagnostic reports"""
+    try:
+        reports_folder = report_generator.reports_folder
+        file_path = os.path.join(reports_folder, filename)
+        
+        # Security check: ensure the file exists and is in the reports folder
+        if not os.path.exists(file_path) or not os.path.abspath(file_path).startswith(os.path.abspath(reports_folder)):
+            raise Http404("Report not found")
+        
+        # Return the file
+        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=filename)
+        
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to download report: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def list_reports(request):
+    """List available diagnostic reports"""
+    try:
+        available_reports = report_generator.get_available_reports()
+        return Response({
+            'success': True,
+            'reports': available_reports,
+            'total_reports': len(available_reports)
+        })
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to list reports: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_telemetry(request):
+    """Get current system telemetry without AI analysis"""
+    try:
+        issue_description = request.GET.get('issue', 'general')
+        telemetry_data = hardware_monitor.get_system_health(issue_description)
+        
+        return Response({
+            'success': True,
+            'telemetry_data': telemetry_data,
+            'timestamp': telemetry_data.get('timestamp')
+        })
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to collect telemetry: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
