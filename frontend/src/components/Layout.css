@@ -1,0 +1,121 @@
+/* Layout Styles - Top Navigation */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Top Navigation Bar */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 30px;
+  background: #000;
+  border-bottom: 1px solid #222;
+  gap: 40px;
+}
+
+.nav-brand h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 10px;
+  background: #111;
+  padding: 8px;
+  border-radius: 50px;
+  border: 1px solid #333;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  color: #888;
+  text-decoration: none;
+  border-radius: 50px;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: #fff;
+  background: #222;
+}
+
+.nav-link.active {
+  color: #000;
+  background: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+}
+
+.nav-icon {
+  font-size: 18px;
+}
+
+.nav-text {
+  font-size: 14px;
+  letter-spacing: 0.3px;
+}
+
+.main-content {
+  flex: 1;
+  background: #000;
+  overflow: auto;
+  height: calc(100vh - 70px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .top-nav {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px 20px;
+  }
+  
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .nav-link {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .nav-brand h1 {
+    font-size: 20px;
+  }
+  
+  .main-content {
+    height: calc(100vh - 130px);
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-link .nav-text {
+    display: none;
+  }
+  
+  .nav-link {
+    padding: 10px 12px;
+  }
+  
+  .nav-icon {
+    font-size: 20px;
+  }
+}
