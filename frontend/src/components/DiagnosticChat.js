@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './DiagnosticChat.css';
 
 const DiagnosticChat = () => {
@@ -6,6 +6,27 @@ const DiagnosticChat = () => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const messagesEndRef = useRef(null);
+  const [processingTime, setProcessingTime] = useState(0);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  // Timer for showing processing time
+  useEffect(() => {
+    let interval;
+    if (isLoading) {
+      setProcessingTime(0);
+      interval = setInterval(() => {
+        setProcessingTime(prev => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,6 +48,10 @@ const DiagnosticChat = () => {
     setError(null);
 
     try {
+      // Create an AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+
       const response = await fetch('http://localhost:8000/api/predict/', {
         method: 'POST',
         headers: {
@@ -36,8 +61,11 @@ const DiagnosticChat = () => {
           input_text: inputText,
           // Optional: Add telemetry data if available
           // telemetry_data: { ... }
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -59,11 +87,14 @@ const DiagnosticChat = () => {
       }
     } catch (err) {
       console.error('Error:', err);
-      setError(
-        err.message === 'Failed to fetch' 
-          ? 'Could not connect to the server. Please ensure the backend is running.'
-          : `Error: ${err.message}`
-      );
+      
+      if (err.name === 'AbortError') {
+        setError('Request timed out. The AI model is taking longer than expected to process your query. Please try a simpler question or try again later.');
+      } else if (err.message === 'Failed to fetch') {
+        setError('Could not connect to the server. Please ensure the backend is running.');
+      } else {
+        setError(`Error: ${err.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -168,6 +199,14 @@ const DiagnosticChat = () => {
                   <span></span>
                   <span></span>
                 </div>
+                <div className="processing-info">
+                  {processingTime > 10 && (
+                    <small>
+                      Processing complex query... ({processingTime}s)
+                      {processingTime > 60 && " - This may take up to 2 minutes for detailed analysis"}
+                    </small>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -178,6 +217,9 @@ const DiagnosticChat = () => {
             <strong>⚠️ Error:</strong> {error}
           </div>
         )}
+        
+        {/* Auto-scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Form */}

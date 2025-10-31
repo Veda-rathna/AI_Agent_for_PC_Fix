@@ -70,7 +70,8 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  overflow-x: hidden;
+  padding: 20px 20px 100px 20px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -84,6 +85,18 @@
   gap: 16px;
   align-items: flex-start;
   animation: fadeIn 0.3s ease-in;
+}
+
+.message.user {
+  flex-direction: row-reverse;
+  margin-left: auto;
+  max-width: 80%;
+}
+
+.message.assistant {
+  flex-direction: row;
+  margin-right: auto;
+  max-width: 80%;
 }
 
 @keyframes fadeIn {
@@ -126,10 +139,18 @@
 
 .message.user .message-content {
   color: #fff;
+  background: #2a2a2a;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border-bottom-right-radius: 4px;
 }
 
 .message.assistant .message-content {
   color: #e0e0e0;
+  background: #1a1a1a;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
 }
 
 /* Typing Indicator */
@@ -166,6 +187,13 @@
   }
 }
 
+.processing-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #888;
+  font-style: italic;
+}
+
 .message-metadata {
   margin-top: 8px;
   font-size: 12px;
@@ -185,10 +213,16 @@
 
 /* Chat Input Form */
 .chat-input-form {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
   padding: 20px;
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
+  background: linear-gradient(to top, #000 60%, transparent);
+  z-index: 10;
 }
 
 .input-container {

@@ -4,7 +4,7 @@ import './HardwareProtection.css';
 
 const HardwareProtection = () => {
   return (
-    <div className="diagnosis-page">
+    <div className="hardware-protection-page">
       <DiagnosticChat />
     </div>
   );
