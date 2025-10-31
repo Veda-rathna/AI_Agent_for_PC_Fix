@@ -5,7 +5,6 @@ import Home from './pages/Home';
 import DiagnosisPage from './pages/DiagnosisPage';
 import HardwareProtection from './pages/HardwareProtection';
 import ServiceCenters from './pages/ServiceCenters';
-import About from './pages/About';
 import './App.css';
 
 function App() {
@@ -18,7 +17,6 @@ function App() {
           <Route path="/diagnosis" element={<DiagnosisPage />} />
           <Route path="/hardware-protection" element={<HardwareProtection />} />
           <Route path="/service-centers" element={<ServiceCenters />} />
-          <Route path="/about" element={<About />} />
         </Routes>
       </Layout>
     </Router>
