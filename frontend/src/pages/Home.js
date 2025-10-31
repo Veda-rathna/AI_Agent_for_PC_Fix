@@ -14,7 +14,7 @@ const Home = () => {
             Advanced artificial intelligence to diagnose, troubleshoot, and protect your computer hardware
           </p>
           <div className="hero-buttons">
-            <Link to="/hardware-protection" className="btn btn-primary">
+            <Link to="/diagnosis" className="btn btn-primary">
               Start Diagnosis
               <span className="btn-icon">→</span>
             </Link>
@@ -89,8 +89,8 @@ const Home = () => {
         <div className="cta-content">
           <h2>Ready to Fix Your PC Issues?</h2>
           <p>Get started with our AI diagnostic assistant now</p>
-          <Link to="/hardware-protection" className="btn btn-large">
-            Launch Hardware Protection
+          <Link to="/diagnosis" className="btn btn-large">
+            Launch Diagnosis
             <span className="btn-icon">🚀</span>
           </Link>
         </div>

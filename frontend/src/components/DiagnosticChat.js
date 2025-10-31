@@ -99,48 +99,76 @@ const DiagnosticChat = () => {
 
   return (
     <div className="diagnostic-chat">
-      <div className="chat-header">
-        <h2>🖥️ PC Diagnostic Assistant</h2>
-        <p>Describe your PC issue and get instant help</p>
-      </div>
+      {/* Welcome Screen - shown when no messages */}
+      {messages.length === 0 && !isLoading && (
+        <div className="welcome-screen">
+          <div className="welcome-content">
+            <div className="welcome-icon">🔧</div>
+            <h1>AutoMend AI Diagnostic</h1>
+            <p>Describe your PC issue and I'll help you diagnose and fix it</p>
+            <div className="example-prompts">
+              <button 
+                className="example-prompt"
+                onClick={() => setInputText("My computer is running very slow")}
+              >
+                My computer is running very slow
+              </button>
+              <button 
+                className="example-prompt"
+                onClick={() => setInputText("Blue screen error on startup")}
+              >
+                Blue screen error on startup
+              </button>
+              <button 
+                className="example-prompt"
+                onClick={() => setInputText("Screen flickering issues")}
+              >
+                Screen flickering issues
+              </button>
+              <button 
+                className="example-prompt"
+                onClick={() => setInputText("Computer won't turn on")}
+              >
+                Computer won't turn on
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
+      {/* Chat Messages */}
       <div className="chat-messages">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.type}`}>
-            <div className="message-header">
-              <span className="message-sender">
-                {msg.type === 'user' ? '👤 You' : '🤖 AI Assistant'}
-              </span>
-              <span className="message-time">
-                {new Date(msg.timestamp).toLocaleTimeString()}
-              </span>
+            <div className="message-avatar">
+              {msg.type === 'user' ? '👤' : '🤖'}
             </div>
-            <div className="message-content">
-              {msg.type === 'assistant' ? formatMessage(msg.content) : msg.content}
-            </div>
-            {msg.usage && (
-              <div className="message-metadata">
-                <small>
-                  Model: {msg.model} | Tokens: {msg.usage.total_tokens} 
-                  ({msg.usage.prompt_tokens} + {msg.usage.completion_tokens})
-                </small>
+            <div className="message-body">
+              <div className="message-content">
+                {msg.type === 'assistant' ? formatMessage(msg.content) : msg.content}
               </div>
-            )}
+              {msg.usage && (
+                <div className="message-metadata">
+                  <small>
+                    {msg.model} · {msg.usage.total_tokens} tokens
+                  </small>
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
         {isLoading && (
-          <div className="message assistant loading">
-            <div className="message-header">
-              <span className="message-sender">🤖 AI Assistant</span>
-            </div>
-            <div className="message-content">
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+          <div className="message assistant">
+            <div className="message-avatar">🤖</div>
+            <div className="message-body">
+              <div className="message-content">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
               </div>
-              <p>Analyzing your issue... This may take a moment.</p>
             </div>
           </div>
         )}
@@ -152,23 +180,26 @@ const DiagnosticChat = () => {
         )}
       </div>
 
+      {/* Input Form */}
       <form className="chat-input-form" onSubmit={handleSubmit}>
-        <textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Describe your PC issue here... (e.g., 'My screen is flickering')"
-          disabled={isLoading}
-          rows="3"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-        />
-        <button type="submit" disabled={isLoading || !inputText.trim()}>
-          {isLoading ? 'Processing...' : 'Send'}
-        </button>
+        <div className="input-container">
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="Describe your PC issue..."
+            disabled={isLoading}
+            rows="1"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+          />
+          <button type="submit" disabled={isLoading || !inputText.trim()}>
+            <span className="send-icon">↑</span>
+          </button>
+        </div>
       </form>
     </div>
   );

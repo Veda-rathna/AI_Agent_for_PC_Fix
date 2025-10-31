@@ -110,7 +110,7 @@ const About = () => {
             Experience the future of PC diagnostics. Our AI assistant is ready to help 
             you solve your hardware issues quickly and efficiently.
           </p>
-          <a href="/hardware-protection" className="cta-button">
+          <a href="/diagnosis" className="cta-button">
             Start Diagnosing Now
             <span className="arrow">→</span>
           </a>
@@ -119,7 +119,7 @@ const About = () => {
       
       <div className="about-footer">
         <p>Built with ❤️ using cutting-edge AI technology</p>
-        <p className="version">Version 1.0.0 | © 2025 AI PC Fix</p>
+        <p className="version">Version 1.0.0 | © 2025 AutoMend</p>
       </div>
     </div>
   );

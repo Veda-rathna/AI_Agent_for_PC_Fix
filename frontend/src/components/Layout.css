@@ -15,7 +15,13 @@
   padding: 15px 30px;
   background: #000;
   border-bottom: 1px solid #222;
-  gap: 40px;
+  position: relative;
+}
+
+.nav-brand {
+  position: absolute;
+  left: 30px;
+  flex-shrink: 0;
 }
 
 .nav-brand h1 {
@@ -84,12 +90,18 @@
     flex-direction: column;
     gap: 15px;
     padding: 15px 20px;
+    justify-content: center;
+  }
+  
+  .nav-brand {
+    position: static;
+    order: 1;
   }
   
   .nav-links {
-    width: 100%;
-    justify-content: center;
+    order: 2;
     flex-wrap: wrap;
+    justify-content: center;
   }
   
   .nav-link {
@@ -107,6 +119,14 @@
 }
 
 @media (max-width: 480px) {
+  .top-nav {
+    padding: 12px 15px;
+  }
+  
+  .nav-brand h1 {
+    font-size: 18px;
+  }
+  
   .nav-link .nav-text {
     display: none;
   }
