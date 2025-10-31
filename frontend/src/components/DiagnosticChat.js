@@ -376,17 +376,6 @@ const DiagnosticChat = () => {
               {msg.mcpExecution && msg.mcpExecution.executed && (
                 <MCPTaskDisplay mcpExecution={msg.mcpExecution} />
               )}
-              
-              {msg.usage && (
-                <div className="message-metadata">
-                  <small>
-                    {msg.model} · {msg.usage.total_tokens} tokens
-                    {msg.mcpExecution && msg.mcpExecution.executed && (
-                      <> · {msg.mcpExecution.total_tasks} tasks executed</>
-                    )}
-                  </small>
-                </div>
-              )}
             </div>
           </div>
         ))}
