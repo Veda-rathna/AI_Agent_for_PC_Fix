@@ -50,7 +50,7 @@ const DiagnosticChat = () => {
     try {
       // Create an AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 600000); // 600 second (10 minute) timeout for reasoning models
 
       const response = await fetch('http://localhost:8000/api/predict/', {
         method: 'POST',
@@ -89,11 +89,11 @@ const DiagnosticChat = () => {
       console.error('Error:', err);
       
       if (err.name === 'AbortError') {
-        setError('Request timed out. The AI model is taking longer than expected to process your query. Please try a simpler question or try again later.');
+        setError('⚠️ Request timed out after 10 minutes. The reasoning model is taking unusually long. This could mean: 1) The model is processing a very complex query, 2) The model server is overloaded. Please try: 1) A simpler question, 2) Restarting the model server, 3) Checking server logs for errors.');
       } else if (err.message === 'Failed to fetch') {
-        setError('Could not connect to the server. Please ensure the backend is running.');
+        setError('❌ Could not connect to the backend server. Please ensure: 1) Backend is running at http://localhost:8000, 2) No firewall blocking the connection, 3) Check terminal for backend errors.');
       } else {
-        setError(`Error: ${err.message}`);
+        setError(`❌ Error: ${err.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -200,11 +200,17 @@ const DiagnosticChat = () => {
                   <span></span>
                 </div>
                 <div className="processing-info">
-                  {processingTime > 10 && (
-                    <small>
-                      Processing complex query... ({processingTime}s)
-                      {processingTime > 60 && " - This may take up to 2 minutes for detailed analysis"}
-                    </small>
+                  {processingTime > 5 && processingTime <= 30 && (
+                    <small>🧠 Reasoning model is thinking... ({processingTime}s)</small>
+                  )}
+                  {processingTime > 30 && processingTime <= 90 && (
+                    <small>🔍 Deep analysis in progress... ({processingTime}s) - Reasoning models take time for complex queries</small>
+                  )}
+                  {processingTime > 90 && processingTime <= 180 && (
+                    <small>⏳ Still processing... ({processingTime}s) - Model is performing detailed reasoning</small>
+                  )}
+                  {processingTime > 180 && (
+                    <small>⚠️ Taking longer than usual... ({processingTime}s) - Please wait, the model should respond soon (max 10 minutes)</small>
                   )}
                 </div>
               </div>

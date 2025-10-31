@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import DiagnosisPage from './pages/DiagnosisPage';
 import HardwareProtection from './pages/HardwareProtection';
 import About from './pages/About';
 import './App.css';
@@ -13,7 +14,8 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/diagnosis" element={<HardwareProtection />} />
+          <Route path="/diagnosis" element={<DiagnosisPage />} />
+          <Route path="/hardware-protection" element={<HardwareProtection />} />
           <Route path="/about" element={<About />} />
         </Routes>
       </Layout>

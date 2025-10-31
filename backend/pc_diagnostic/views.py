@@ -9,14 +9,18 @@ import requests
 import os
 import uuid
 import json
+import platform
+from datetime import datetime
 
 # Import hardware monitoring modules
 from .hardware_monitor import HardwareMonitor
 from .report_generator import ReportGenerator
+from .hardware_hash import HardwareHashProtection
 
 # Initialize hardware monitor and report generator
 hardware_monitor = HardwareMonitor()
 report_generator = ReportGenerator()
+hardware_hash_protection = HardwareHashProtection()
 
 # Local LLM API Configuration
 LLM_API_BASE = "https://3ccc9499bbff.ngrok-free.app"
@@ -349,7 +353,7 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                     "temperature": 0.7,
                     "max_tokens": 3000
                 },
-                timeout=120  # Reasoning models may take longer
+                timeout=600  # 10 minutes timeout for reasoning models (they can take long to think)
             )
             
             # Check if the request was successful
@@ -627,3 +631,151 @@ def get_telemetry(request):
             'success': False,
             'error': f'Failed to collect telemetry: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def generate_hardware_hash(request):
+    """
+    Generate encrypted hardware hash file
+    
+    Request Body:
+        {
+            "password": "optional_custom_password"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "file_path": "path/to/file",
+            "hardware_hash": "hash_string",
+            "download_url": "/api/download_hardware_hash/filename"
+        }
+    """
+    try:
+        password = request.data.get('password', 'default_password')
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        hostname = platform.node()
+        filename = f"hardware_hash_{hostname}_{timestamp}.hwh"
+        
+        # Ensure hardware_hash directory exists
+        hash_dir = os.path.join(settings.MEDIA_ROOT, 'hardware_hashes')
+        os.makedirs(hash_dir, exist_ok=True)
+        
+        output_path = os.path.join(hash_dir, filename)
+        
+        # Generate hardware hash file
+        result = hardware_hash_protection.create_hardware_hash_file(output_path, password)
+        
+        if result.get('success'):
+            return Response({
+                'success': True,
+                'filename': filename,
+                'file_path': output_path,
+                'file_size': result.get('file_size'),
+                'hardware_hash': result.get('hardware_hash'),
+                'created': result.get('created'),
+                'components_captured': result.get('components_captured'),
+                'download_url': f'/api/download_hardware_hash/{filename}'
+            })
+        else:
+            return Response({
+                'success': False,
+                'error': result.get('error', 'Unknown error occurred')
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to generate hardware hash: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def analyze_hardware_hash(request):
+    """
+    Analyze uploaded hardware hash file and compare with current hardware
+    
+    Request:
+        - file: Hardware hash file (.hwh)
+        - password: Password for decryption (optional)
+    
+    Response:
+        {
+            "success": true,
+            "comparison": {
+                "overall_status": "changed|unchanged",
+                "changes_detected": [...],
+                "changeable_components_changes": [...]
+            }
+        }
+    """
+    try:
+        if 'file' not in request.FILES:
+            return Response({
+                'success': False,
+                'error': 'No file provided'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        file = request.FILES['file']
+        password = request.data.get('password', 'default_password')
+        
+        # Save uploaded file temporarily
+        upload_dir = os.path.join(settings.MEDIA_ROOT, 'temp_uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        temp_file_path = os.path.join(upload_dir, file.name)
+        with open(temp_file_path, 'wb+') as destination:
+            for chunk in file.chunks():
+                destination.write(chunk)
+        
+        # Analyze the file
+        analysis_result = hardware_hash_protection.analyze_hardware_hash_file(temp_file_path, password)
+        
+        # Clean up temporary file
+        try:
+            os.remove(temp_file_path)
+        except:
+            pass
+        
+        if analysis_result.get('success'):
+            return Response({
+                'success': True,
+                'comparison': analysis_result.get('comparison'),
+                'file_info': analysis_result.get('comparison', {}).get('file_info'),
+                'summary': analysis_result.get('comparison', {}).get('summary')
+            })
+        else:
+            return Response({
+                'success': False,
+                'error': analysis_result.get('error', 'Analysis failed')
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to analyze hardware hash: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def download_hardware_hash(request, filename):
+    """Download generated hardware hash file"""
+    try:
+        hash_dir = os.path.join(settings.MEDIA_ROOT, 'hardware_hashes')
+        file_path = os.path.join(hash_dir, filename)
+        
+        # Security check
+        if not os.path.exists(file_path) or not os.path.abspath(file_path).startswith(os.path.abspath(hash_dir)):
+            raise Http404("Hardware hash file not found")
+        
+        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=filename)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': f'Failed to download file: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

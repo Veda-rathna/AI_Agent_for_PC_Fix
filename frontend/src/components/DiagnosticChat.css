@@ -71,7 +71,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 20px 100px 20px;
+  padding: 20px 20px 120px 20px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -213,7 +213,7 @@
 
 /* Chat Input Form */
 .chat-input-form {
-  position: sticky;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
@@ -221,8 +221,9 @@
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
-  background: linear-gradient(to top, #000 60%, transparent);
+  background: linear-gradient(to top, #000 80%, rgba(0, 0, 0, 0.95) 100%);
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .input-container {

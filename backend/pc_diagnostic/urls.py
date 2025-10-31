@@ -26,4 +26,9 @@ urlpatterns = [
     path('api/telemetry/', views.get_telemetry, name='get_telemetry'),
     path('api/reports/', views.list_reports, name='list_reports'),
     path('api/download_report/<str:filename>/', views.download_report, name='download_report'),
+    
+    # Hardware Hash Protection endpoints
+    path('api/hardware-hash/generate/', views.generate_hardware_hash, name='generate_hardware_hash'),
+    path('api/hardware-hash/analyze/', views.analyze_hardware_hash, name='analyze_hardware_hash'),
+    path('api/download_hardware_hash/<str:filename>/', views.download_hardware_hash, name='download_hardware_hash'),
 ]
