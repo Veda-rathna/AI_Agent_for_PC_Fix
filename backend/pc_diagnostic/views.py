@@ -349,7 +349,7 @@ Focus on issue-specific telemetry only. Be decisive. Provide actionable next ste
                     "model": LLM_MODEL_ID,
                     "messages": messages,
                     "temperature": 0.7,
-                    "max_tokens": 3000
+                    "max_tokens": 4000
                 },
                 timeout=600,  # 10 minutes timeout for reasoning models (they can take long to think)
                 verify=False  # Disable SSL verification for cloudflare tunnels
