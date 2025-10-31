@@ -13,8 +13,11 @@
   flex-direction: column;
   flex: 1;
   height: 100%;
+  width: 100%;
   margin-left: 320px; /* Space for expanded sidebar */
   transition: margin-left 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .conversation-history.collapsed + .chat-container {
@@ -28,10 +31,12 @@
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
+  width: 100%;
 }
 
 .welcome-content {
   max-width: 600px;
+  width: 100%;
   text-align: center;
 }
 
@@ -79,13 +84,15 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 20px 120px 20px;
+  padding: 20px;
+  padding-bottom: 120px; /* Space for fixed input form */
   display: flex;
   flex-direction: column;
   gap: 24px;
   max-width: 1100px;
   width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .message {
@@ -93,18 +100,17 @@
   gap: 16px;
   align-items: flex-start;
   animation: fadeIn 0.3s ease-in;
+  width: 100%;
 }
 
 .message.user {
   flex-direction: row-reverse;
-  margin-left: auto;
-  max-width: 80%;
+  justify-content: flex-start;
 }
 
 .message.assistant {
   flex-direction: row;
-  margin-right: auto;
-  max-width: 80%;
+  justify-content: flex-start;
 }
 
 @keyframes fadeIn {
@@ -139,6 +145,9 @@
 .message-body {
   flex: 1;
   min-width: 0;
+  max-width: 70%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message-content {
@@ -220,15 +229,22 @@
 .chat-input-form {
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: 320px; /* Account for expanded sidebar */
   right: 0;
   padding: 20px;
   max-width: 1100px;
-  width: 100%;
+  width: calc(100% - 320px); /* Account for sidebar width */
   margin: 0 auto;
   background: linear-gradient(to top, #000 80%, rgba(0, 0, 0, 0.95) 100%);
   z-index: 10;
   box-sizing: border-box;
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+/* Adjust input form when sidebar is collapsed */
+.conversation-history.collapsed ~ .chat-container .chat-input-form {
+  left: 50px;
+  width: calc(100% - 50px);
 }
 
 .input-container {
@@ -423,6 +439,10 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .chat-container {
+    margin-left: 50px; /* Collapsed sidebar on mobile */
+  }
+  
   .welcome-content h1 {
     font-size: 1.5rem; /* 24px on mobile */
   }
@@ -443,6 +463,10 @@
   
   .message {
     gap: 12px;
+  }
+  
+  .message-body {
+    max-width: 85%;
   }
 }
 
@@ -469,5 +493,145 @@
   
   .message-content {
     font-size: 0.875rem; /* 14px on small mobile */
+  }
+}
+
+/* Hardware Issue Alert & Navigation Buttons */
+.hardware-issue-alert {
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 100%);
+  border: 2px solid #ff6b35;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.2);
+}
+
+.hardware-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hardware-icon {
+  font-size: 1.75rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.hardware-alert-header h4 {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  color: #ff6b35;
+  margin: 0;
+}
+
+.hardware-recommendation {
+  font-size: 0.9375rem; /* 15px */
+  color: #d1d5db;
+  margin: 0 0 20px 0;
+  line-height: 1.6;
+}
+
+.hardware-navigation-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.hardware-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #1f1f1f;
+  border: 2px solid #333;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.hardware-nav-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  border-color: #fff;
+}
+
+.service-center-btn:hover {
+  background: linear-gradient(135deg, #1a472a 0%, #2d5f3d 100%);
+  border-color: #10b981;
+}
+
+.hardware-protection-btn:hover {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  border-color: #60a5fa;
+}
+
+.hardware-nav-btn .btn-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.hardware-nav-btn .btn-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.hardware-nav-btn .btn-label {
+  font-size: 1rem; /* 16px */
+  font-weight: 600;
+  color: #fff;
+  display: block;
+}
+
+.hardware-nav-btn .btn-description {
+  font-size: 0.8125rem; /* 13px */
+  color: #9ca3af;
+  display: block;
+  line-height: 1.4;
+}
+
+.service-center-btn:hover .btn-label {
+  color: #10b981;
+}
+
+.hardware-protection-btn:hover .btn-label {
+  color: #60a5fa;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .hardware-navigation-buttons {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .hardware-nav-btn {
+    padding: 14px 16px;
+  }
+  
+  .hardware-nav-btn .btn-icon {
+    font-size: 1.5rem;
+  }
+  
+  .hardware-alert-header h4 {
+    font-size: 1rem;
+  }
+  
+  .hardware-recommendation {
+    font-size: 0.875rem;
   }
 }
