@@ -13,6 +13,10 @@ import platform
 from datetime import datetime
 import csv
 import math
+import urllib3
+
+# Disable SSL warnings for cloudflare tunnels
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Import hardware monitoring modules
 from .hardware_monitor import HardwareMonitor
@@ -25,7 +29,9 @@ report_generator = ReportGenerator()
 hardware_hash_protection = HardwareHashProtection()
 
 # Local LLM API Configuration
-LLM_API_BASE = "https://3ccc9499bbff.ngrok-free.app"
+# Using Cloudflare tunnel for http://localhost:8888
+LLM_API_BASE = "http://127.0.0.1:1234"
+# Model ID - llama.cpp server auto-detects the loaded model, so we can use a simple identifier
 LLM_MODEL_ID = "reasoning-llama-3.1-cot-re1-nmt-v2-orpo-i1"
 
 
@@ -158,7 +164,8 @@ def predict(request):
         {
             "input_text": "User's problem description",
             "telemetry_data": {...},  // Optional: system telemetry data
-            "generate_report": true   // Optional: generate downloadable report
+            "generate_report": true,   // Optional: generate downloadable report
+            "execute_mcp_tasks": true  // Optional: auto-execute MCP tasks
         }
     
     Response:
@@ -171,6 +178,7 @@ def predict(request):
             "telemetry_collected": true,
             "telemetry_summary": {...},
             "reports": {...},  // If generate_report=true
+            "mcp_execution": {...},  // If execute_mcp_tasks=true
             "usage": {...},
             "metadata": {...}
         }
@@ -180,6 +188,7 @@ def predict(request):
         input_text = request.data.get('input_text', '')
         provided_telemetry = request.data.get('telemetry_data', None)
         generate_report = request.data.get('generate_report', False)
+        execute_mcp = request.data.get('execute_mcp_tasks', True)  # Auto-execute by default
         
         if not input_text:
             return Response(
@@ -347,16 +356,23 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
         
         # Call the local reasoning model API
         try:
+            api_url = f"{LLM_API_BASE}/v1/chat/completions"
+            print(f"🔗 Attempting to connect to: {api_url}")
+            print(f"📦 Using model: {LLM_MODEL_ID}")
+            
             response = requests.post(
-                f"{LLM_API_BASE}/v1/chat/completions",
+                api_url,
                 json={
                     "model": LLM_MODEL_ID,
                     "messages": messages,
                     "temperature": 0.7,
                     "max_tokens": 3000
                 },
-                timeout=600  # 10 minutes timeout for reasoning models (they can take long to think)
+                timeout=600,  # 10 minutes timeout for reasoning models (they can take long to think)
+                verify=False  # Disable SSL verification for cloudflare tunnels
             )
+            
+            print(f"✅ Response status: {response.status_code}")
             
             # Check if the request was successful
             if response.status_code != 200:
@@ -421,6 +437,58 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
                         'system_fingerprint': result.get('system_fingerprint', '')
                     }
                 }
+                
+                # Execute MCP tasks if requested
+                if execute_mcp:
+                    try:
+                        from autogen_integration.orchestrator import AutoGenOrchestrator
+                        
+                        print("Executing MCP tasks...")
+                        orchestrator = AutoGenOrchestrator()
+                        mcp_result = orchestrator.execute_mcp_tasks(prediction, use_autogen=False)
+                        
+                        if mcp_result.get('success'):
+                            # Format detailed task results for display in chat
+                            task_results = mcp_result.get('results', [])
+                            formatted_tasks = []
+                            
+                            for i, task_result in enumerate(task_results, 1):
+                                task_info = {
+                                    'task_number': i,
+                                    'task_name': task_result.get('task', 'Unknown Task'),
+                                    'success': task_result.get('success', False),
+                                    'status': "✅ Completed" if task_result.get('success') else "❌ Failed",
+                                    'analysis': task_result.get('analysis', ''),
+                                    'error': task_result.get('error', ''),
+                                    'recommendation': task_result.get('recommendation', ''),
+                                    'details': task_result.get('details', {}),
+                                    'timestamp': task_result.get('timestamp', '')
+                                }
+                                formatted_tasks.append(task_info)
+                            
+                            response_data['mcp_execution'] = {
+                                'executed': True,
+                                'tasks_completed': mcp_result.get('tasks_completed', 0),
+                                'tasks_failed': mcp_result.get('tasks_failed', 0),
+                                'total_tasks': len(task_results),
+                                'tasks': formatted_tasks,  # Detailed task-by-task results
+                                'results': mcp_result.get('results', []),  # Original results
+                                'summary': mcp_result.get('summary', ''),
+                                'execution_summary': orchestrator.get_execution_summary(mcp_result.get('results', []))
+                            }
+                            print(f"MCP tasks executed: {mcp_result.get('tasks_completed', 0)} completed")
+                        else:
+                            response_data['mcp_execution'] = {
+                                'executed': False,
+                                'note': mcp_result.get('error', 'No MCP tasks found in response')
+                            }
+                    except Exception as mcp_error:
+                        print(f"MCP execution error: {str(mcp_error)}")
+                        response_data['mcp_execution'] = {
+                            'executed': False,
+                            'error': str(mcp_error),
+                            'note': 'MCP task execution failed - diagnostics available via /api/mcp/execute endpoint'
+                        }
                 
                 # Generate reports if requested
                 if generate_report:
@@ -507,27 +575,57 @@ Format your response with both the user-friendly conversation AND the MCP tasks 
             return Response(response_data)
     
     except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout error connecting to {LLM_API_BASE}")
         return Response(
             {
                 'success': False,
-                'error': 'Request to model timed out. The reasoning model may be processing a complex query.'
+                'error': 'Request to model timed out. The reasoning model may be processing a complex query.',
+                'api_url': LLM_API_BASE
             },
             status=status.HTTP_504_GATEWAY_TIMEOUT
         )
-    except requests.exceptions.ConnectionError:
+    except requests.exceptions.SSLError as ssl_err:
+        print(f"🔒 SSL error: {str(ssl_err)}")
+        return Response(
+            {
+                'success': False,
+                'error': 'SSL certificate error when connecting to model server',
+                'details': f'SSL Error: {str(ssl_err)}',
+                'api_url': LLM_API_BASE
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+    except requests.exceptions.ConnectionError as conn_err:
+        print(f"❌ Connection error: {str(conn_err)}")
+        print(f"   Tried to connect to: {LLM_API_BASE}")
+        print(f"   Make sure:")
+        print(f"   1. The Cloudflare tunnel is active")
+        print(f"   2. The URL is correct")
+        print(f"   3. The llama.cpp server is running on port 8888")
         return Response(
             {
                 'success': False,
                 'error': 'Could not connect to local model server',
-                'details': f'Make sure the server is running at {LLM_API_BASE}'
+                'details': str(conn_err),
+                'api_url': LLM_API_BASE,
+                'troubleshooting': [
+                    'Verify the Cloudflare tunnel is active',
+                    'Check if llama.cpp server is running on port 8888',
+                    'Verify the tunnel URL is correct',
+                    'Try accessing the URL directly in a browser'
+                ]
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
     except Exception as e:
+        print(f"💥 Unexpected error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return Response(
             {
                 'success': False,
-                'error': f'Unexpected error: {str(e)}'
+                'error': f'Unexpected error: {str(e)}',
+                'type': type(e).__name__
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

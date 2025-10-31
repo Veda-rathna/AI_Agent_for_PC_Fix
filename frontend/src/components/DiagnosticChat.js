@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './DiagnosticChat.css';
 import ConversationHistory from './ConversationHistory';
+import MCPTaskDisplay from './MCPTaskDisplay';
 
 const DiagnosticChat = () => {
   const [inputText, setInputText] = useState('');
@@ -151,7 +152,8 @@ const DiagnosticChat = () => {
           model: data.model,
           finishReason: data.finish_reason,
           usage: data.usage,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          mcpExecution: data.mcp_execution // Add MCP execution results
         };
         
         setMessages(prev => [...prev, aiMessage]);
@@ -175,6 +177,9 @@ const DiagnosticChat = () => {
   };
 
   const formatMessage = (content) => {
+    // Remove MCP_TASKS block from display (it's used internally but shouldn't be shown)
+    const cleanContent = content.replace(/<MCP_TASKS>[\s\S]*?<\/MCP_TASKS>/gi, '').trim();
+    
     // Helper function to parse inline formatting (bold, italic, code)
     const parseInlineFormatting = (text) => {
       const parts = [];
@@ -230,7 +235,7 @@ const DiagnosticChat = () => {
     };
 
     // Convert markdown-style formatting to HTML
-    return content
+    return cleanContent
       .split('\n')
       .map((line, index) => {
         // Handle headers
@@ -319,10 +324,19 @@ const DiagnosticChat = () => {
               <div className="message-content">
                 {msg.type === 'assistant' ? formatMessage(msg.content) : msg.content}
               </div>
+              
+              {/* Display MCP Task Execution Results */}
+              {msg.mcpExecution && msg.mcpExecution.executed && (
+                <MCPTaskDisplay mcpExecution={msg.mcpExecution} />
+              )}
+              
               {msg.usage && (
                 <div className="message-metadata">
                   <small>
                     {msg.model} · {msg.usage.total_tokens} tokens
+                    {msg.mcpExecution && msg.mcpExecution.executed && (
+                      <> · {msg.mcpExecution.total_tasks} tasks executed</>
+                    )}
                   </small>
                 </div>
               )}

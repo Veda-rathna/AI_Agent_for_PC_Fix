@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from . import views
+from . import mcp_views
 from ai_diagnostic import conversation_views
 
 urlpatterns = [
@@ -32,6 +33,11 @@ urlpatterns = [
     path('api/hardware-hash/generate/', views.generate_hardware_hash, name='generate_hardware_hash'),
     path('api/hardware-hash/analyze/', views.analyze_hardware_hash, name='analyze_hardware_hash'),
     path('api/download_hardware_hash/<str:filename>/', views.download_hardware_hash, name='download_hardware_hash'),
+    
+    # MCP Task Execution endpoints (AutoGen Integration)
+    path('api/mcp/execute/', mcp_views.execute_mcp_tasks, name='execute_mcp_tasks'),
+    path('api/mcp/parse/', mcp_views.parse_mcp_tasks, name='parse_mcp_tasks'),
+    path('api/mcp/status/', mcp_views.get_orchestrator_status, name='orchestrator_status'),
     
     # Conversation Management endpoints
     path('api/conversations/', conversation_views.list_conversations, name='list_conversations'),
