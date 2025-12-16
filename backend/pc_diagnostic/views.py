@@ -30,7 +30,7 @@ hardware_hash_protection = HardwareHashProtection()
 
 # Local LLM API Configuration
 # Using Cloudflare tunnel for http://localhost:8888
-LLM_API_BASE = "https://3ccc9499bbff.ngrok-free.app"
+LLM_API_BASE = "http://127.0.0.1:1234"
 # Model ID - llama.cpp server auto-detects the loaded model, so we can use a simple identifier
 LLM_MODEL_ID = "reasoning-llama-3.1-cot-re1-nmt-v2-orpo-i1"
 
