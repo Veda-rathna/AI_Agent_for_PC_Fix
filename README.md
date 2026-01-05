@@ -6,6 +6,55 @@ An intelligent, full-stack application that leverages AI and AutoGen agents to d
 
 The AI-Driven PC Diagnostic Assistant is designed to help users troubleshoot computer problems through an interactive chat interface. The system automatically collects system telemetry, analyzes issues using AI-powered agents, and provides actionable diagnostic recommendations.
 
+## 🔮 Google Technology Integration
+
+This project integrates **Google Gemini** (via Google AI Studio) as the primary Large Language Model for AI-driven PC diagnostics. Gemini powers the intelligent analysis of system telemetry data and generates actionable troubleshooting recommendations.
+
+### Why Google Gemini?
+
+- **Advanced Reasoning**: Gemini's state-of-the-art reasoning capabilities enable accurate hardware vs. software issue classification
+- **Context Understanding**: Processes complex system telemetry data (CPU metrics, memory usage, disk statistics) and correlates them with user-reported symptoms
+- **Fast & Efficient**: Gemini 2.5 Flash provides rapid diagnostic analysis suitable for real-time troubleshooting
+- **Latest Technology**: Using Gemini 2.5 (January 2026) - Google's newest generation model
+- **Reliable Fallback Chain**: 
+  1. **Primary**: Google Gemini (cloud-based, cutting-edge AI)
+  2. **Secondary**: Local LLaMA (privacy-focused, offline-capable)
+  3. **Tertiary**: Offline Mock Engine (guaranteed uptime)
+
+### Integration Architecture
+
+```
+User Query + System Telemetry
+         ↓
+    LLM Provider Factory
+         ↓
+    ┌────────────────┐
+    │  Google Gemini │ ← Primary (if configured)
+    └────────────────┘
+         ↓ (on failure)
+    ┌────────────────┐
+    │  Local LLaMA   │ ← Fallback #1
+    └────────────────┘
+         ↓ (on failure)
+    ┌────────────────┐
+    │  Mock Analysis │ ← Fallback #2
+    └────────────────┘
+```
+
+### Configuration
+
+To enable Google Gemini:
+
+1. **Get API Key**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and create an API key
+2. **Configure Environment**: Copy `backend/.env.example` to `backend/.env` and add:
+   ```env
+   LLM_PROVIDER=gemini
+   GEMINI_API_KEY=your_google_gemini_api_key_here
+   GEMINI_MODEL=gemini-2.5-flash
+   ```
+3. **Install Dependencies**: `pip install -r backend/requirements.txt`
+4. **Verify**: API responses will include `"ai_provider": "Google Gemini"`
+
 ### Key Highlights
 
 - **🤖 Multi-Agent AI System**: Uses AutoGen framework with specialized diagnostic agents (Hardware Specialist, OS Specialist, Network Specialist, Software Specialist)
@@ -105,11 +154,31 @@ AI_Agent_for_PC_Fix/
    python manage.py migrate
    ```
 
-3. **Configure environment variables** (optional for AI features)
-   Create a `.env` file in the `backend` directory:
+3. **Configure environment variables** (for AI features)
+   
+   **For Google Gemini (Recommended)**:
+   ```powershell
+   cd backend
+   cp .env.example .env
+   # Edit .env and add your Gemini API key from https://aistudio.google.com/app/apikey
+   ```
+   
+   Example `.env` configuration:
    ```env
-   OPENAI_API_KEY=your_openai_api_key_here
-   GROQ_API_KEY=your_groq_api_key_here
+   # Use Google Gemini as primary LLM
+   LLM_PROVIDER=gemini
+   GEMINI_API_KEY=your_google_gemini_api_key_here
+   GEMINI_MODEL=gemini-2.5-flash
+   
+   # Optional: Configure local LLaMA as fallback
+   LLAMA_API_BASE=http://127.0.0.1:1234
+   LLAMA_MODEL_ID=your-model-name
+   ```
+   
+   **For Local LLaMA Only** (offline mode):
+   ```env
+   LLM_PROVIDER=local
+   LLAMA_API_BASE=http://127.0.0.1:1234
    ```
 
 4. **Set up the frontend**

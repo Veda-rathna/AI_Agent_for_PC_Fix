@@ -23,12 +23,15 @@ from .hardware_monitor import HardwareMonitor
 from .report_generator import ReportGenerator
 from .hardware_hash import HardwareHashProtection
 
+# Import LLM provider factory
+from .llm.factory import get_llm_provider
+
 # Initialize hardware monitor and report generator
 hardware_monitor = HardwareMonitor()
 report_generator = ReportGenerator()
 hardware_hash_protection = HardwareHashProtection()
 
-# Local LLM API Configuration
+# Local LLM API Configuration (kept for backward compatibility)
 # Using Cloudflare tunnel for http://localhost:8888
 LLM_API_BASE = "http://127.0.0.1:1234"
 # Model ID - llama.cpp server auto-detects the loaded model, so we can use a simple identifier
@@ -117,7 +120,7 @@ def generate_mock_analysis(issue_description, telemetry_data):
 3. **Contact support** if issues persist with the detailed diagnostic report
 
 ---
-*Note: This analysis was generated using offline diagnostic capabilities. For more detailed AI-powered analysis, ensure the reasoning model server is available.*
+*Note: This analysis was generated using offline diagnostic capabilities. The AI diagnostic service is currently unavailable (Gemini API → Local LLaMA → Offline mode).*
 """
     
     return mock_response
@@ -230,7 +233,7 @@ def predict(request):
                 'note': 'Full telemetry data available in generated report'
             }
             telemetry_json = json.dumps(telemetry_summary, indent=2, default=str)
-            print(f"✅ Summarized to {len(telemetry_json)} chars")
+            print(f"[INFO] Summarized to {len(telemetry_json)} chars")
         
         # Prepare the enhanced prompt with telemetry data
         user_prompt = f"""
@@ -242,11 +245,8 @@ System Telemetry Data:
 Please provide a comprehensive diagnosis and solution based on this real-time system data.
 """
         
-        # Prepare the prompt for the reasoning model
-        messages = [
-            {
-                "role": "system",
-                "content": """You are an AI PC Diagnostic Expert. Analyze real-time telemetry data to distinguish hardware from software issues.
+        # Prepare the system prompt
+        system_prompt = """You are an AI PC Diagnostic Expert. Analyze real-time telemetry data to distinguish hardware from software issues.
 
 CORE RULES:
 1. Base diagnosis ONLY on provided telemetry data - show specific metrics
@@ -330,235 +330,199 @@ Ex2: "Screen has lines" | Telemetry: GPU 42°C, no driver errors, artifacts in B
 → Show: GPU/display metrics only
 
 Focus on issue-specific telemetry only. Be decisive. Provide actionable next steps."""
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
         
-        # Call the local reasoning model API
+        # Combine system prompt and user prompt for providers that don't support roles
+        full_prompt = f"{system_prompt}\n\n{user_prompt}"
+        
+        # Call the LLM using the provider factory pattern
         try:
-            api_url = f"{LLM_API_BASE}/v1/chat/completions"
-            print(f"🔗 Attempting to connect to: {api_url}")
-            print(f"📦 Using model: {LLM_MODEL_ID}")
+            print("[LLM] Initializing LLM provider...")
+            provider = get_llm_provider()
+            provider_name = provider.get_provider_name()
+            print(f"[LLM] Using {provider_name} for prediction")
             
-            response = requests.post(
-                api_url,
-                json={
-                    "model": LLM_MODEL_ID,
-                    "messages": messages,
-                    "temperature": 0.7,
-                    "max_tokens": 4000
-                },
-                timeout=600,  # 10 minutes timeout for reasoning models (they can take long to think)
-                verify=False  # Disable SSL verification for cloudflare tunnels
+            # Call the provider's complete method
+            llm_result = provider.complete(
+                prompt=full_prompt,
+                temperature=0.7,
+                max_tokens=4000
             )
             
-            print(f"✅ Response status: {response.status_code}")
+            # Extract results from provider response
+            prediction = llm_result['content']
+            model_used = llm_result['model']
+            finish_reason = llm_result['finish_reason']
+            usage = llm_result['usage']
+            metadata = llm_result['metadata']
             
-            # Check if the request was successful
-            if response.status_code != 200:
+            if not prediction:
                 return Response(
                     {
                         'success': False,
-                        'error': f'Model API error: {response.status_code}',
-                        'details': response.text
+                        'error': 'No content in model response'
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
-            # Parse the response
-            result = response.json()
+            # Detect if this is a hardware issue by parsing the MCP_TASKS block
+            is_hardware_issue = False
+            hardware_component = None
             
-            # Extract the model's response
-            if 'choices' in result and len(result['choices']) > 0:
-                choice = result['choices'][0]
-                
-                # Get the assistant's message content
-                prediction = choice.get('message', {}).get('content', '')
-                finish_reason = choice.get('finish_reason', 'unknown')
-                
-                # Get usage information
-                usage = result.get('usage', {})
-                model_used = result.get('model', LLM_MODEL_ID)
-                
-                if not prediction:
-                    return Response(
-                        {
-                            'success': False,
-                            'error': 'No content in model response'
+            try:
+                # Extract MCP_TASKS JSON from the response
+                if '<MCP_TASKS>' in prediction and '</MCP_TASKS>' in prediction:
+                    start_idx = prediction.find('<MCP_TASKS>') + len('<MCP_TASKS>')
+                    end_idx = prediction.find('</MCP_TASKS>')
+                    mcp_json_str = prediction[start_idx:end_idx].strip()
+                    
+                    # Parse the JSON
+                    mcp_data = json.loads(mcp_json_str)
+                    
+                    # Check if it's a hardware issue
+                    if mcp_data.get('issue_type') == 'hardware':
+                        is_hardware_issue = True
+                        hardware_component = mcp_data.get('hardware_component', 'Unknown Component')
+                        print(f"[HW] Hardware issue detected: {hardware_component}")
+            except Exception as parse_error:
+                print(f"Warning: Could not parse MCP tasks for hardware detection: {str(parse_error)}")
+            
+            # Build response data
+            response_data = {
+                'success': True,
+                'message': prediction,
+                'prediction': prediction,
+                'model': model_used,
+                'ai_provider': provider_name,  # Add provider name for judges
+                'finish_reason': finish_reason,
+                'session_id': session_id,
+                'is_hardware_issue': is_hardware_issue,
+                'telemetry_collected': True,
+                'telemetry_summary': {
+                    'timestamp': telemetry_data.get('timestamp'),
+                    'system': telemetry_data.get('system_info', {}).get('platform'),
+                    'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
+                    'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
+                    'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
+                },
+                'usage': usage,
+                'metadata': metadata
+            }
+            
+            # Add hardware-specific navigation options if it's a hardware issue
+            if is_hardware_issue:
+                response_data['hardware_issue_details'] = {
+                    'component': hardware_component,
+                    'requires_service': True,
+                    'navigation_options': {
+                        'service_center': {
+                            'label': 'Find Nearby Service Centers',
+                            'description': 'Locate authorized repair centers near your location',
+                            'action': 'navigate_to_service_centers',
+                            'icon': 'location'
                         },
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                    )
-                
-                # Detect if this is a hardware issue by parsing the MCP_TASKS block
-                is_hardware_issue = False
-                hardware_component = None
-                
-                try:
-                    # Extract MCP_TASKS JSON from the response
-                    if '<MCP_TASKS>' in prediction and '</MCP_TASKS>' in prediction:
-                        start_idx = prediction.find('<MCP_TASKS>') + len('<MCP_TASKS>')
-                        end_idx = prediction.find('</MCP_TASKS>')
-                        mcp_json_str = prediction[start_idx:end_idx].strip()
-                        
-                        # Parse the JSON
-                        mcp_data = json.loads(mcp_json_str)
-                        
-                        # Check if it's a hardware issue
-                        if mcp_data.get('issue_type') == 'hardware':
-                            is_hardware_issue = True
-                            hardware_component = mcp_data.get('hardware_component', 'Unknown Component')
-                            print(f"🔧 Hardware issue detected: {hardware_component}")
-                except Exception as parse_error:
-                    print(f"Warning: Could not parse MCP tasks for hardware detection: {str(parse_error)}")
-                
-                # Build response data
-                response_data = {
-                    'success': True,
-                    'message': prediction,
-                    'prediction': prediction,
-                    'model': model_used,
-                    'finish_reason': finish_reason,
-                    'session_id': session_id,
-                    'is_hardware_issue': is_hardware_issue,
-                    'telemetry_collected': True,
-                    'telemetry_summary': {
-                        'timestamp': telemetry_data.get('timestamp'),
-                        'system': telemetry_data.get('system_info', {}).get('platform'),
-                        'cpu_usage': telemetry_data.get('cpu', {}).get('total_usage'),
-                        'memory_usage': telemetry_data.get('memory', {}).get('percentage'),
-                        'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
+                        'hardware_protection': {
+                            'label': 'Hardware Protection',
+                            'description': 'Generate hardware fingerprint to verify component authenticity',
+                            'action': 'navigate_to_hardware_protection',
+                            'icon': 'shield'
+                        }
                     },
-                    'usage': {
-                        'prompt_tokens': usage.get('prompt_tokens', 0),
-                        'completion_tokens': usage.get('completion_tokens', 0),
-                        'total_tokens': usage.get('total_tokens', 0)
-                    },
-                    'metadata': {
-                        'id': result.get('id', ''),
-                        'created': result.get('created', ''),
-                        'object': result.get('object', ''),
-                        'system_fingerprint': result.get('system_fingerprint', '')
-                    }
+                    'recommendation': 'This issue requires professional hardware service. Use the buttons below to find service centers or protect your hardware identity.'
                 }
-                
-                # Add hardware-specific navigation options if it's a hardware issue
-                if is_hardware_issue:
-                    response_data['hardware_issue_details'] = {
-                        'component': hardware_component,
-                        'requires_service': True,
-                        'navigation_options': {
-                            'service_center': {
-                                'label': 'Find Nearby Service Centers',
-                                'description': 'Locate authorized repair centers near your location',
-                                'action': 'navigate_to_service_centers',
-                                'icon': 'location'
-                            },
-                            'hardware_protection': {
-                                'label': 'Hardware Protection',
-                                'description': 'Generate hardware fingerprint to verify component authenticity',
-                                'action': 'navigate_to_hardware_protection',
-                                'icon': 'shield'
-                            }
-                        },
-                        'recommendation': 'This issue requires professional hardware service. Use the buttons below to find service centers or protect your hardware identity.'
-                    }
-                    print(f"✅ Added hardware navigation options to response")
-                
-                # Execute MCP tasks if requested
-                if execute_mcp:
-                    try:
-                        from autogen_integration.orchestrator import AutoGenOrchestrator
+                print(f"[HW] Added hardware navigation options to response")
+            
+            # Execute MCP tasks if requested
+            if execute_mcp:
+                try:
+                    from autogen_integration.orchestrator import AutoGenOrchestrator
+                    
+                    print("Executing MCP tasks...")
+                    orchestrator = AutoGenOrchestrator()
+                    mcp_result = orchestrator.execute_mcp_tasks(prediction, use_autogen=False)
+                    
+                    if mcp_result.get('success'):
+                        # Format detailed task results for display in chat
+                        task_results = mcp_result.get('results', [])
+                        formatted_tasks = []
                         
-                        print("Executing MCP tasks...")
-                        orchestrator = AutoGenOrchestrator()
-                        mcp_result = orchestrator.execute_mcp_tasks(prediction, use_autogen=False)
+                        for i, task_result in enumerate(task_results, 1):
+                            task_info = {
+                                'task_number': i,
+                                'task_name': task_result.get('task', 'Unknown Task'),
+                                'success': task_result.get('success', False),
+                                'status': "✅ Completed" if task_result.get('success') else "❌ Failed",
+                                'analysis': task_result.get('analysis', ''),
+                                'error': task_result.get('error', ''),
+                                'recommendation': task_result.get('recommendation', ''),
+                                'details': task_result.get('details', {}),
+                                'timestamp': task_result.get('timestamp', '')
+                            }
+                            formatted_tasks.append(task_info)
                         
-                        if mcp_result.get('success'):
-                            # Format detailed task results for display in chat
-                            task_results = mcp_result.get('results', [])
-                            formatted_tasks = []
-                            
-                            for i, task_result in enumerate(task_results, 1):
-                                task_info = {
-                                    'task_number': i,
-                                    'task_name': task_result.get('task', 'Unknown Task'),
-                                    'success': task_result.get('success', False),
-                                    'status': "✅ Completed" if task_result.get('success') else "❌ Failed",
-                                    'analysis': task_result.get('analysis', ''),
-                                    'error': task_result.get('error', ''),
-                                    'recommendation': task_result.get('recommendation', ''),
-                                    'details': task_result.get('details', {}),
-                                    'timestamp': task_result.get('timestamp', '')
-                                }
-                                formatted_tasks.append(task_info)
-                            
-                            response_data['mcp_execution'] = {
-                                'executed': True,
-                                'tasks_completed': mcp_result.get('tasks_completed', 0),
-                                'tasks_failed': mcp_result.get('tasks_failed', 0),
-                                'total_tasks': len(task_results),
-                                'tasks': formatted_tasks,  # Detailed task-by-task results
-                                'results': mcp_result.get('results', []),  # Original results
-                                'summary': mcp_result.get('summary', ''),
-                                'execution_summary': orchestrator.get_execution_summary(mcp_result.get('results', []))
-                            }
-                            print(f"MCP tasks executed: {mcp_result.get('tasks_completed', 0)} completed")
-                        else:
-                            response_data['mcp_execution'] = {
-                                'executed': False,
-                                'note': mcp_result.get('error', 'No MCP tasks found in response')
-                            }
-                    except Exception as mcp_error:
-                        print(f"MCP execution error: {str(mcp_error)}")
+                        response_data['mcp_execution'] = {
+                            'executed': True,
+                            'tasks_completed': mcp_result.get('tasks_completed', 0),
+                            'tasks_failed': mcp_result.get('tasks_failed', 0),
+                            'total_tasks': len(task_results),
+                            'tasks': formatted_tasks,  # Detailed task-by-task results
+                            'results': mcp_result.get('results', []),  # Original results
+                            'summary': mcp_result.get('summary', ''),
+                            'execution_summary': orchestrator.get_execution_summary(mcp_result.get('results', []))
+                        }
+                        print(f"MCP tasks executed: {mcp_result.get('tasks_completed', 0)} completed")
+                    else:
                         response_data['mcp_execution'] = {
                             'executed': False,
-                            'error': str(mcp_error),
-                            'note': 'MCP task execution failed - diagnostics available via /api/mcp/execute endpoint'
+                            'note': mcp_result.get('error', 'No MCP tasks found in response')
                         }
-                
-                # Generate reports if requested
-                if generate_report:
-                    try:
-                        # Generate JSON report
-                        json_filename, json_filepath = report_generator.generate_json_report(
-                            input_text, telemetry_data, prediction, session_id
-                        )
-                        
-                        response_data['reports'] = {
-                            'json': {
-                                'filename': json_filename,
-                                'download_url': f'/api/download_report/{json_filename}'
-                            }
+                except Exception as mcp_error:
+                    print(f"MCP execution error: {str(mcp_error)}")
+                    response_data['mcp_execution'] = {
+                        'executed': False,
+                        'error': str(mcp_error),
+                        'note': 'MCP task execution failed - diagnostics available via /api/mcp/execute endpoint'
+                    }
+            
+            # Generate reports if requested
+            if generate_report:
+                try:
+                    # Generate JSON report
+                    json_filename, json_filepath = report_generator.generate_json_report(
+                        input_text, telemetry_data, prediction, session_id
+                    )
+                    
+                    response_data['reports'] = {
+                        'json': {
+                            'filename': json_filename,
+                            'download_url': f'/api/download_report/{json_filename}'
                         }
-                        
-                        print(f"Report generated: {json_filename}")
-                        
-                    except Exception as report_error:
-                        print(f"Report generation error: {str(report_error)}")
-                        response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+                    }
+                    
+                    print(f"Report generated: {json_filename}")
+                    
+                except Exception as report_error:
+                    print(f"Report generation error: {str(report_error)}")
+                    response_data['report_error'] = f"Failed to generate reports: {str(report_error)}"
+            
+            return Response(response_data)
                 
-                return Response(response_data)
-                
-            else:
-                return Response(
-                    {
-                        'success': False,
-                        'error': 'No choices in model response'
-                    },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-        
-        except requests.exceptions.ConnectionError:
-            print("LLM API Error: Connection failed. Using offline diagnostic mode.")
+        except Exception as provider_error:
+            # Provider failed - fall back to offline mock analysis
+            print(f"⚠️ LLM Provider Error: {str(provider_error)}")
+            print("🔄 Falling back to offline diagnostic mode...")
             
             # Use simplified fallback analysis
             prediction = generate_mock_analysis(input_text, telemetry_data)
             model_used = "Offline Diagnostic Engine"
             finish_reason = "offline_mode"
             usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            metadata = {
+                "provider": "Offline Mock",
+                "id": "",
+                "created": "",
+                "object": "",
+                "system_fingerprint": ""
+            }
             
             # Detect potential hardware issues in offline mode based on keywords and telemetry
             is_hardware_issue = False
@@ -582,6 +546,7 @@ Focus on issue-specific telemetry only. Be decisive. Provide actionable next ste
                 'prediction': prediction,
                 'message': prediction,
                 'model': model_used,
+                'ai_provider': "Offline Mock Engine",
                 'finish_reason': finish_reason,
                 'session_id': session_id,
                 'is_hardware_issue': is_hardware_issue,
@@ -594,12 +559,7 @@ Focus on issue-specific telemetry only. Be decisive. Provide actionable next ste
                     'issue_specific_data': list(telemetry_data.get('issue_specific', {}).keys())
                 },
                 'usage': usage,
-                'metadata': {
-                    'id': '',
-                    'created': '',
-                    'object': '',
-                    'system_fingerprint': ''
-                }
+                'metadata': metadata
             }
             
             # Add hardware navigation options if suspected hardware issue
@@ -623,7 +583,7 @@ Focus on issue-specific telemetry only. Be decisive. Provide actionable next ste
                     },
                     'recommendation': 'This appears to be a hardware-related issue. Use the buttons below to find service centers or protect your hardware identity.'
                 }
-                print(f"✅ Hardware issue suspected in offline mode - added navigation options")
+                print(f"[HW] Hardware issue suspected in offline mode - added navigation options")
             
             # Generate reports if requested
             if generate_report:
@@ -644,58 +604,16 @@ Focus on issue-specific telemetry only. Be decisive. Provide actionable next ste
             
             return Response(response_data)
     
-    except requests.exceptions.Timeout:
-        print(f"⏱️ Timeout error connecting to {LLM_API_BASE}")
-        return Response(
-            {
-                'success': False,
-                'error': 'Request to model timed out. The reasoning model may be processing a complex query.',
-                'api_url': LLM_API_BASE
-            },
-            status=status.HTTP_504_GATEWAY_TIMEOUT
-        )
-    except requests.exceptions.SSLError as ssl_err:
-        print(f"🔒 SSL error: {str(ssl_err)}")
-        return Response(
-            {
-                'success': False,
-                'error': 'SSL certificate error when connecting to model server',
-                'details': f'SSL Error: {str(ssl_err)}',
-                'api_url': LLM_API_BASE
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE
-        )
-    except requests.exceptions.ConnectionError as conn_err:
-        print(f"❌ Connection error: {str(conn_err)}")
-        print(f"   Tried to connect to: {LLM_API_BASE}")
-        print(f"   Make sure:")
-        print(f"   1. The Cloudflare tunnel is active")
-        print(f"   2. The URL is correct")
-        print(f"   3. The llama.cpp server is running on port 8888")
-        return Response(
-            {
-                'success': False,
-                'error': 'Could not connect to local model server',
-                'details': str(conn_err),
-                'api_url': LLM_API_BASE,
-                'troubleshooting': [
-                    'Verify the Cloudflare tunnel is active',
-                    'Check if llama.cpp server is running on port 8888',
-                    'Verify the tunnel URL is correct',
-                    'Try accessing the URL directly in a browser'
-                ]
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE
-        )
-    except Exception as e:
-        print(f"💥 Unexpected error: {str(e)}")
+    except Exception as outer_error:
+        # Outer exception handler for any unexpected errors
+        print(f"💥 Unexpected error in predict endpoint: {str(outer_error)}")
         import traceback
         traceback.print_exc()
         return Response(
             {
                 'success': False,
-                'error': f'Unexpected error: {str(e)}',
-                'type': type(e).__name__
+                'error': f'Unexpected error: {str(outer_error)}',
+                'type': type(outer_error).__name__
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

@@ -64,10 +64,12 @@ htmlcov/
 .pytest_cache/
 .tox/
 
-# Environment variables
+# Environment variables (NEVER commit API keys!)
 .env
 .env.local
 .env.*.local
+backend/.env
+backend/.env.local
 
 # Logs
 logs/
